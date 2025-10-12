@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>3D Car Racing Game</title>
+<style>
+  :root{--bg:#071127;--road:#2b2f36;--accent:#ffd86b;--neon:#6be0ff}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#031021);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#fff;display:flex;align-items:center;justify-content:center}
+  #wrap{width:1000px;max-width:98vw;height:700px;max-height:96vh;border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.6);position:relative;background:radial-gradient(circle at 50% 10%, rgba(107,224,255,0.06), transparent 25%)}
+  canvas{display:block;width:100%;height:100%}
+  .ui{position:absolute;left:14px;top:14px;z-index:20;font-size:14px;display:flex;gap:10px;align-items:center}
+  .btn{background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+  .score{position:absolute;right:14px;top:14px;z-index:20;background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:8px;font-weight:600}
+  .footer-note{position:absolute;left:14px;bottom:14px;z-index:20;background:rgba(0,0,0,0.25);padding:6px 10px;border-radius:8px;font-size:13px;color:#cfe7ff}
+  /* tiny on-screen controls for mobile */
+  .touch-controls{position:absolute;left:0;right:0;bottom:0;height:140px;z-index:18;display:flex;justify-content:space-between;padding:18px;pointer-events:none}
+  .touch-controls > div{width:48%;height:100%;pointer-events:auto;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.02));border-radius:12px;display:flex;align-items:center;justify-content:center;opacity:0.02}
+  .touch-controls > div.active{opacity:0.18}
+  /* small responsive tweaks */
+  @media (max-width:520px){
+    #wrap{height:86vh;border-radius:8px}
+    .ui{font-size:13px}
+    .score{font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="gameCanvas" width="1000" height="700"></canvas>
+  <div class="ui">
+    <div class="btn" id="pauseBtn">Pause</div>
+    <div class="btn" id="restartBtn">Restart</div>
+  </div>
+  <div class="score">Score: <span id="score">0</span></div>
+  <div class="footer-note">3D Car Racing — Pro (WebView / Vercel ready)</div>
+  <div class="touch-controls">
+    <div id="leftTouch"></div>
+    <div id="rightTouch"></div>
+  </div>
+</div>
+
+<script>
+/*
+  3D-ish Car Racing (Single-file)
+  - Renders pseudo-3D road by drawing scaled segments
+  - Mobile touch left/right controls
+  - Keyboard controls (← →)
+  - WebAudio-generated sounds (engine, crash)
+  - Ready to host on Vercel and load in Sketchware WebView
+*/
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const pauseBtn = document.getElementById('pauseBtn');
+const restartBtn = document.getElementById('restartBtn');
+const leftTouch = document.getElementById('leftTouch');
+const rightTouch = document.getElementById('rightTouch');
+
+// logical size (fixed) for consistent physics
+const W = 1000, H = 700;
+canvas.width = W; canvas.height = H;
+
+let running = true, score = 0, speedMult = 1;
+
+// Road parameters
+const road = {lanes:3, laneW: 280/3, baseW: 420, cameraZ: 0, segLength: 200};
+const player = {x: 0, z: 0, lane:1, speed:0, maxSpeed: 12, width: 40, height: 80};
+player.x = 0; // lateral offset from center; -1..1 corresponds to left..right
+
+// obstacles as segments with lane index and z position
+let obstacles = [];
+let spawnTimer = 0;
+
+// input
+let left = false, right = false;
+
+// WebAudio simple engine
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let engineGain = audioCtx.createGain(); engineGain.gain.value = 0.0; engineGain.connect(audioCtx.destination);
+
+function playEngine(on=true){
+  // simple oscillator-based engine hum
+  if(!audioCtx) return;
+  if(on && !audioCtx.currentEngine){
+    const o = audioCtx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = 80;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.02;
+    o.connect(g); g.connect(engineGain);
+    o.start();
+    audioCtx.currentEngine = o;
+    audioCtx.currentEngineGain = g;
+    engineGain.gain.linearRampToValueAtTime(1, audioCtx.currentTime+0.1);
+  } else if(!on && audioCtx.currentEngine){
+    engineGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.15);
+    try{ audioCtx.currentEngine.stop(audioCtx.currentTime+0.16);}catch(e){}
+    audioCtx.currentEngine = null;
+  }
+}
+
+// crash sound
+function playCrash(){
+  const b = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.25, audioCtx.sampleRate);
+  const data = b.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * Math.exp(-i/2000);
+  const src = audioCtx.createBufferSource();
+  src.buffer = b; src.connect(audioCtx.destination); src.start();
+}
+
+// util: project 3D point (x,z) to screen y,x coordinates
+function project(x,z,camZ){
+  const dz = z - camZ;
+  const perspective = 300 / Math.max(1, dz);
+  const screenX = W/2 + x * perspective;
+  const screenY = H - perspective * 120;
+  const scale = perspective / 2.2;
+  return {x: screenX, y: screenY, scale};
+}
+
+function resetGame(){
+  obstacles = [];
+  spawnTimer = 0;
+  score = 0;
+  player.x = 0;
+  player.speed = 6;
+  running = true;
+  speedMult = 1;
+  playEngine(true);
+}
+
+resetGame();
+
+function spawnObstacle(){
+  // lane positions -1,0,1
+  const lane = Math.floor(Math.random()*road.lanes) - Math.floor(road.lanes/2);
+  const z = (player.z + 1800) + Math.random()*1600;
+  obstacles.push({lane, z, w: 60 + Math.random()*30, h: 120, color: randomColor(), passed:false});
+}
+
+function randomColor(){
+  const cols = ['#ff6b6b','#6be0ff','#9d7bff','#6bff9b','#ffd86b','#ff9f43'];
+  return cols[Math.floor(Math.random()*cols.length)];
+}
+
+function update(dt){
+  if(!running) return;
+  // lateral movement
+  const moveSpeed = 5;
+  if(left) player.x -= moveSpeed * dt * 0.06;
+  if(right) player.x += moveSpeed * dt * 0.06;
+  player.x = Math.max(-1, Math.min(1, player.x));
+  // forward speed gradually increases
+  player.speed = Math.min(player.maxSpeed, player.speed + 0.002 * dt * speedMult);
+  player.z += player.speed * dt * 0.9;
+
+  // spawn obstacles
+  spawnTimer += dt;
+  if(spawnTimer > 700 - speedMult*120){
+    spawnTimer = 0;
+    spawnObstacle();
+  }
+
+  // update obstacles and collision
+  for(let i=obstacles.length-1;i>=0;i--){
+    const o = obstacles[i];
+    // move relative to player: obstacle z decreases relative to player.z tracked by camera
+    if(o.z < player.z - 100){
+      // behind player, remove
+      obstacles.splice(i,1);
+      score += 10;
+      continue;
+    }
+    // check collision: if obstacle z within near range
+    if(Math.abs(o.z - player.z) < 150){
+      const laneX = (o.lane) * 140 + (o.lane===0?0:0); // lane center multiplier
+      const obsScreen = project(laneX + 0, o.z - player.z + 400, player.z);
+      const carScreen = project(player.x * 140, 400, player.z);
+      // approximate bounding boxes in screen space
+      const dx = Math.abs(obsScreen.x - carScreen.x);
+      const dy = Math.abs(obsScreen.y - carScreen.y);
+      if(dx < 70 && dy < 60){
+        // collision
+        playCrash();
+        running = false;
+        playEngine(false);
+        setTimeout(()=>{
+          if(confirm('Game Over\\nScore: '+score+'\\nRestart?')) resetGame();
+        }, 80);
+      }
+    }
+  }
+}
+
+function drawRoad(){
+  // draw horizon
+  ctx.fillStyle = '#031021';
+  ctx.fillRect(0,0,W,H);
+  // layers of road segments toward horizon for pseudo-3D
+  const segments = 40;
+  for(let i=0;i<segments;i++){
+    const z = i * 60 + (player.z % 60);
+    const scale = 1 - (i/segments);
+    const roadWidth = 800 * scale;
+    const centerX = W/2 + (player.x * 140) * (1 - scale);
+    const topY = 100 + i * 12;
+    const bottomY = topY + 18;
+    // road strip
+    ctx.fillStyle = mixColor('#2b2f36', '#111316', i/segments);
+    ctx.beginPath();
+    ctx.moveTo(centerX - roadWidth/2, topY);
+    ctx.lineTo(centerX + roadWidth/2, topY);
+    ctx.lineTo(centerX + roadWidth/2, bottomY);
+    ctx.lineTo(centerX - roadWidth/2, bottomY);
+    ctx.closePath();
+    ctx.fill();
+    // lane markers
+    ctx.strokeStyle = '#cfd8e3';
+    ctx.lineWidth = Math.max(1, 6 * scale);
+    const laneCount = road.lanes;
+    for(let l=1;l<laneCount;l++){
+      const lx = centerX - roadWidth/2 + (roadWidth/(laneCount)) * l;
+      ctx.beginPath();
+      ctx.setLineDash([10, 18]);
+      ctx.moveTo(lx, topY);
+      ctx.lineTo(lx, bottomY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
+function mixColor(a,b,t){
+  // simple hex mix
+  const ca = hexToRgb(a), cb = hexToRgb(b);
+  const r = Math.round(ca.r + (cb.r - ca.r) * t);
+  const g = Math.round(ca.g + (cb.g - ca.g) * t);
+  const bl = Math.round(ca.b + (cb.b - ca.b) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+function hexToRgb(hex){ hex = hex.replace('#',''); return {r:parseInt(hex.substring(0,2),16), g:parseInt(hex.substring(2,4),16), b:parseInt(hex.substring(4,6),16)}; }
+
+function drawPlayerCar(){
+  const car = {x: W/2 + player.x*140, y: H - 160, w: player.width, h: player.height};
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(car.x - car.w/2 - 8, car.y + car.h - 12, car.w + 16, 12);
+  // body
+  ctx.fillStyle = '#ffd86b';
+  roundRect(ctx, car.x - car.w/2, car.y, car.w, car.h, 10, true, false);
+  // windshield
+  ctx.fillStyle = '#001a2d';
+  roundRect(ctx, car.x - car.w/2 + 8, car.y + 10, car.w - 16, 18, 6, true, false);
+}
+
+function roundRect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+  if(fill) ctx.fill();
+  if(stroke) ctx.stroke();
+}
+
+function drawObstacles(){
+  obstacles.forEach(o=>{
+    // each obstacle lane position
+    const laneX = o.lane * 140;
+    const p = project(laneX, o.z - player.z + 400, player.z);
+    const w = 60 * p.scale;
+    const h = 120 * p.scale;
+    // skip if behind camera or scale tiny
+    if(p.scale < 0.3) return;
+    // rectangle
+    ctx.fillStyle = o.color;
+    roundRect(ctx, p.x - w/2, p.y - h/2, w, h, 8 * p.scale, true, false);
+    // windshield
+    ctx.fillStyle = '#001a2d';
+    roundRect(ctx, p.x - w/4, p.y - h/4, w/2, h/5, 4 * p.scale, true, false);
+  });
+}
+
+// main draw
+function draw(){
+  // background gradient stars / city hint
+  drawRoad();
+  drawObstacles();
+  drawPlayerCar();
+  // HUD elements are DOM-based; only update score here
+  scoreEl.textContent = score;
+}
+
+// game loop with dt
+let last = performance.now();
+function loop(now){
+  const dt = now - last;
+  last = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// input handlers
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowLeft' || e.key === 'a') left = true;
+  if(e.key === 'ArrowRight' || e.key === 'd') right = true;
+  if(e.key === ' ' && !running) resetGame();
+  // resume audio on first user gesture
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+});
+window.addEventListener('keyup', e=>{
+  if(e.key === 'ArrowLeft' || e.key === 'a') left = false;
+  if(e.key === 'ArrowRight' || e.key === 'd') right = false;
+});
+// touch zones
+leftTouch.addEventListener('touchstart', ()=>{ left=true; leftTouch.classList.add('active'); if(audioCtx.state==='suspended') audioCtx.resume(); }, {passive:true});
+leftTouch.addEventListener('touchend', ()=>{ left=false; leftTouch.classList.remove('active'); }, {passive:true});
+rightTouch.addEventListener('touchstart', ()=>{ right=true; rightTouch.classList.add('active'); if(audioCtx.state==='suspended') audioCtx.resume(); }, {passive:true});
+rightTouch.addEventListener('touchend', ()=>{ right=false; rightTouch.classList.remove('active'); }, {passive:true});
+
+// buttons
+pauseBtn.addEventListener('click', ()=>{
+  running = !running;
+  if(running) { last = performance.now(); playEngine(true); }
+  else { playEngine(false); }
+  pauseBtn.textContent = running ? 'Pause' : 'Resume';
+});
+restartBtn.addEventListener('click', ()=>{
+  resetGame();
+});
+
+// simple adaptive obstacle spawn: push more as score grows
+setInterval(()=>{
+  // increase difficulty slowly
+  speedMult += 0.02;
+}, 2500);
+
+</script>
+</body>
+</html>
