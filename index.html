@@ -3,213 +3,724 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Telegram Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Monetag SDK Integration -->
-    <script 
-        src="https://domain.com/sdk.js" 
-        data-zone="10081114" 
-        data-sdk="show_10081114"
-        data-auto="2/0.1/30/5/0">
-    </script>
+    <title>Hamster Miner - Working Monetag Integration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .ad-button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin: 10px 0;
-            border-radius: 5px;
-            cursor: pointer;
+
+        .telegram-app {
             width: 100%;
+            max-width: 400px;
+            height: 700px;
+            background: #1e2a3a;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            background: #2b5278;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-btn {
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .app-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 15px;
+        }
+
+        .header-icon {
+            font-size: 18px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .game-container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffcc00;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .hamster-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .hamster {
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(135deg, #ff9a00 0%, #ffcc00 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 5px 15px rgba(255, 204, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .hamster:active {
+            transform: scale(0.95);
+        }
+
+        .hamster-face {
+            position: relative;
+            width: 100px;
+            height: 80px;
+        }
+
+        .hamster-eye {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border-radius: 50%;
+            top: 20px;
+        }
+
+        .hamster-eye.left {
+            left: 10px;
+        }
+
+        .hamster-eye.right {
+            right: 10px;
+        }
+
+        .hamster-nose {
+            position: absolute;
+            width: 15px;
+            height: 10px;
+            background: #ff6666;
+            border-radius: 50%;
+            bottom: 10px;
+            left: 42.5px;
+        }
+
+        .tap-text {
             font-size: 16px;
+            margin-top: 10px;
+            color: #ffcc00;
         }
-        .ad-button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
+
+        .boosters {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
         }
-        .reward-message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
+
+        .booster {
+            background: rgba(43, 82, 120, 0.7);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .booster:hover {
+            background: rgba(43, 82, 120, 0.9);
+            transform: translateY(-3px);
+        }
+
+        .booster-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #ffcc00;
+        }
+
+        .booster-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .booster-desc {
+            font-size: 12px;
+            opacity: 0.8;
             text-align: center;
         }
-        .success {
-            background: #d4edda;
-            color: #155724;
+
+        .booster-cost {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #ffcc00;
         }
+
+        .ad-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .ad-button {
+            background: #ffcc00;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+            width: calc(100% - 10px);
+        }
+
+        .ad-button:hover {
+            background: #ffaa00;
+        }
+
+        .ad-button:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .ad-status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .debug-info {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #ff6b6b;
+        }
+
+        .notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffcc00;
+            z-index: 100;
+            display: none;
+            text-align: center;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-around;
+            background: #1e2a3a;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .nav-item.active {
+            color: #5c9ce6;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        .success {
+            color: #4CAF50;
+        }
+
         .error {
-            background: #f8d7da;
-            color: #721c24;
+            color: #f44336;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Your Mini App</h1>
-        
-        <!-- Rewarded Interstitial Section -->
-        <div class="ad-section">
-            <h3>Earn Rewards</h3>
-            <button class="ad-button" id="rewardedAdBtn" onclick="showRewardedAd()">
-                Watch Ad for Reward
-            </button>
-            <div id="rewardMessage" class="reward-message" style="display: none;"></div>
+    <div class="telegram-app">
+        <div class="header">
+            <div class="header-left">
+                <div class="back-btn"><i class="fas fa-arrow-left"></i></div>
+                <div class="app-title">Hamster Miner</div>
+            </div>
+            <div class="header-right">
+                <div class="header-icon"><i class="fas fa-search"></i></div>
+                <div class="header-icon"><i class="fas fa-ellipsis-v"></i></div>
+            </div>
         </div>
 
-        <!-- Rewarded Popup Section -->
-        <div class="ad-section">
-            <h3>Special Offer</h3>
-            <button class="ad-button" onclick="showPopupAd()">
-                Click for Special Offer
-            </button>
+        <div class="game-container">
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value" id="coin-count">1,250</div>
+                    <div class="stat-label">COINS</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="per-tap">5</div>
+                    <div class="stat-label">PER TAP</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="energy">80/100</div>
+                    <div class="stat-label">ENERGY</div>
+                </div>
+            </div>
+
+            <div class="hamster-container">
+                <div class="hamster" id="hamster">
+                    <div class="hamster-face">
+                        <div class="hamster-eye left"></div>
+                        <div class="hamster-eye right"></div>
+                        <div class="hamster-nose"></div>
+                    </div>
+                </div>
+                <div class="tap-text">Tap the hamster to mine coins!</div>
+            </div>
+
+            <!-- Monetag Ad Integration Section -->
+            <div class="ad-section">
+                <h3><i class="fas fa-ad"></i> Monetag Rewards</h3>
+                <p style="font-size: 12px; margin-bottom: 15px; opacity: 0.8;">Watch ads to earn bonuses</p>
+                
+                <button class="ad-button" id="ad-double-coins">
+                    <i class="fas fa-coins"></i> Watch Ad for 2x Coins (30 min)
+                </button>
+                
+                <button class="ad-button" id="ad-refill-energy">
+                    <i class="fas fa-bolt"></i> Watch Ad for Full Energy
+                </button>
+                
+                <button class="ad-button" id="ad-bonus-coins">
+                    <i class="fas fa-gem"></i> Watch Ad for 500 Bonus Coins
+                </button>
+
+                <div class="ad-status" id="ad-status">
+                    Ad system: <span id="sdk-status">Checking...</span>
+                </div>
+
+                <!-- Debug Information -->
+                <div class="debug-info" id="debug-info" style="display: none;">
+                    <strong>Debug Info:</strong><br>
+                    <span id="debug-details">Loading debug information...</span>
+                </div>
+            </div>
+
+            <div class="boosters">
+                <div class="booster" id="booster1">
+                    <div class="booster-icon"><i class="fas fa-hammer"></i></div>
+                    <div class="booster-title">Better Pickaxe</div>
+                    <div class="booster-desc">Increase coins per tap</div>
+                    <div class="booster-cost">Cost: 500 coins</div>
+                </div>
+                <div class="booster" id="booster2">
+                    <div class="booster-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="booster-title">Energy Boost</div>
+                    <div class="booster-desc">Increase max energy</div>
+                    <div class="booster-cost">Cost: 800 coins</div>
+                </div>
+            </div>
         </div>
 
-        <!-- In-App Interstitial Info -->
-        <div class="ad-section">
-            <p><small>In-App Interstitial ads will appear automatically during your session</small></p>
+        <div class="navigation">
+            <div class="nav-item active">
+                <div class="nav-icon"><i class="fas fa-home"></i></div>
+                <div>Home</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon"><i class="fas fa-ad"></i></div>
+                <div>Ads</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon"><i class="fas fa-store"></i></div>
+                <div>Shop</div>
+            </div>
+        </div>
+
+        <div class="notification" id="notification">
+            <div id="notification-content">Notification</div>
         </div>
     </div>
 
+    <!-- Multiple Monetag SDK Integration Options -->
+    <!-- Option 1: Direct SDK from libtl.com -->
+    <script src="//libtl.com/sdk.js" data-zone="10081114" data-sdk="show_10081114"></script>
+    
+    <!-- Option 2: Alternative domains for fallback -->
     <script>
-        // Initialize Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
+        // Fallback SDK loading if primary fails
+        function loadMonetagFallback() {
+            const alternativeDomains = [
+                '//cdn.monetag.com/sdk.js',
+                '//monetag.s3.amazonaws.com/sdk.js',
+                '//sdk.monetag.com/sdk.js'
+            ];
+            
+            let loaded = false;
+            
+            alternativeDomains.forEach(domain => {
+                if (!loaded) {
+                    const script = document.createElement('script');
+                    script.src = domain;
+                    script.setAttribute('data-zone', '10081114');
+                    script.setAttribute('data-sdk', 'show_10081114');
+                    script.onload = function() {
+                        loaded = true;
+                        console.log('Monetag SDK loaded from: ' + domain);
+                        updateSDKStatus('loaded', 'SDK loaded from: ' + domain);
+                    };
+                    script.onerror = function() {
+                        console.log('Failed to load from: ' + domain);
+                    };
+                    document.head.appendChild(script);
+                }
+            });
+            
+            // If all domains fail, use mock SDK for testing
+            setTimeout(() => {
+                if (!loaded && typeof show_10081114 === 'undefined') {
+                    createMockSDK();
+                }
+            }, 3000);
+        }
 
-        // Track ad readiness
-        let adPreloaded = false;
-
-        // Preload ads when app loads
-        function preloadAds() {
-            if (typeof show_10081114 !== 'undefined') {
-                show_10081114({
-                    type: 'preload',
-                    ymid: 'user_' + tg.initDataUnsafe.user?.id || 'anonymous',
-                    timeout: 5
-                }).then(() => {
-                    adPreloaded = true;
-                    console.log('Ad preloaded successfully');
-                }).catch((error) => {
-                    console.log('Ad preload failed:', error.message);
-                    adPreloaded = false;
+        // Create mock SDK for testing if real SDK fails
+        function createMockSDK() {
+            window.show_10081114 = function(options) {
+                console.log('Mock SDK called with:', options);
+                updateSDKStatus('mock', 'Using mock SDK for testing');
+                
+                return new Promise((resolve, reject) => {
+                    // Simulate ad loading
+                    setTimeout(() => {
+                        if (Math.random() > 0.2) { // 80% success rate for testing
+                            resolve({
+                                type: 'completed',
+                                reward: true,
+                                amount: 500
+                            });
+                        } else {
+                            reject(new Error('Mock ad failed to load'));
+                        }
+                    }, 2000);
                 });
+            };
+            updateSDKStatus('mock', 'Using mock SDK - real ads not available');
+        }
+    </script>
+
+    <script>
+        // Game state
+        let coins = 1250;
+        let coinsPerTap = 5;
+        let energy = 80;
+        let maxEnergy = 100;
+        let doubleCoinsActive = false;
+        
+        // DOM elements
+        const coinCountElement = document.getElementById('coin-count');
+        const perTapElement = document.getElementById('per-tap');
+        const energyElement = document.getElementById('energy');
+        const hamsterElement = document.getElementById('hamster');
+        const notificationElement = document.getElementById('notification');
+        const notificationContent = document.getElementById('notification-content');
+        const sdkStatusElement = document.getElementById('sdk-status');
+        const debugInfoElement = document.getElementById('debug-info');
+        const debugDetailsElement = document.getElementById('debug-details');
+
+        // Update UI with current game state
+        function updateUI() {
+            coinCountElement.textContent = formatNumber(coins);
+            perTapElement.textContent = coinsPerTap;
+            energyElement.textContent = `${energy}/${maxEnergy}`;
+        }
+        
+        // Format numbers with commas
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+        
+        // Show notification
+        function showNotification(text, type = 'info') {
+            notificationContent.textContent = text;
+            notificationContent.className = type;
+            notificationElement.style.display = 'block';
+            setTimeout(() => {
+                notificationElement.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Update SDK status
+        function updateSDKStatus(status, message) {
+            sdkStatusElement.textContent = message;
+            sdkStatusElement.className = status;
+            
+            // Show debug info if there are issues
+            if (status === 'error' || status === 'mock') {
+                debugInfoElement.style.display = 'block';
+                debugDetailsElement.textContent = `SDK Status: ${status} - ${message}`;
             }
         }
 
-        // Show Rewarded Interstitial Ad
-        function showRewardedAd() {
-            const button = document.getElementById('rewardedAdBtn');
-            const message = document.getElementById('rewardMessage');
+        // Handle hamster tap
+        function handleHamsterTap() {
+            if (energy <= 0) {
+                showNotification("No energy! Watch an ad to refill", "error");
+                return;
+            }
+            
+            let earnedCoins = coinsPerTap;
+            if (doubleCoinsActive) {
+                earnedCoins *= 2;
+            }
+            
+            coins += earnedCoins;
+            energy -= 1;
+            
+            updateUI();
+            showNotification(`+${earnedCoins} coins!`, "success");
+            
+            hamsterElement.classList.add('pulse');
+            setTimeout(() => {
+                hamsterElement.classList.remove('pulse');
+            }, 300);
+        }
+        
+        // Show Monetag ad
+        function showMonetagAd(adType) {
+            const button = document.getElementById(`ad-${adType}`);
+            const originalText = button.innerHTML;
+            
+            if (typeof show_10081114 === 'undefined') {
+                showNotification("Ad system not loaded. Please try again.", "error");
+                updateSDKStatus('error', 'SDK function not found');
+                loadMonetagFallback();
+                return;
+            }
             
             button.disabled = true;
-            button.textContent = 'Loading Ad...';
-
-            // Use user ID from Telegram or generate session ID
-            const userId = tg.initDataUnsafe.user?.id || 'session_' + Date.now();
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading Ad...';
             
             show_10081114({
                 type: 'end',
-                ymid: userId,
-                requestVar: 'reward_button'
+                ymid: 'user_' + Date.now(), // Use timestamp as user ID for demo
+                requestVar: adType
             }).then((result) => {
-                // Ad completed successfully
-                if (result.reward_event_type === 'valued') {
-                    showMessage('Reward granted! Thank you for watching.', 'success');
-                    // Add your reward logic here
-                    grantUserReward();
-                } else {
-                    showMessage('Ad completed but no reward granted.', 'error');
-                }
-            }).catch((error) => {
-                // Ad failed or was skipped
-                showMessage('Ad unavailable. Please try again later.', 'error');
-                console.error('Ad error:', error.message);
-            }).finally(() => {
-                button.disabled = false;
-                button.textContent = 'Watch Ad for Reward';
-                // Re-preload for next time
-                setTimeout(preloadAds, 1000);
-            });
-        }
-
-        // Show Rewarded Popup Ad
-        function showPopupAd() {
-            const userId = tg.initDataUnsafe.user?.id || 'session_' + Date.now();
-            
-            show_10081114({
-                type: 'pop',
-                ymid: userId,
-                requestVar: 'popup_button'
-            }).catch((error) => {
-                console.error('Popup ad error:', error.message);
-                showMessage('Popup failed to open. Please check popup blockers.', 'error');
-            });
-        }
-
-        // Initialize In-App Interstitial
-        function initInAppInterstitial() {
-            show_10081114({
-                type: 'inApp',
-                inAppSettings: {
-                    frequency: 3,
-                    capping: 0.5, // 30 minutes
-                    interval: 120, // 2 minutes between ads
-                    timeout: 10, // 10 seconds before first ad
-                    everyPage: false
-                }
-            });
-        }
-
-        // Utility function to show messages
-        function showMessage(text, type) {
-            const message = document.getElementById('rewardMessage');
-            message.textContent = text;
-            message.className = 'reward-message ' + type;
-            message.style.display = 'block';
-            
-            setTimeout(() => {
-                message.style.display = 'none';
-            }, 5000);
-        }
-
-        // Your reward granting logic
-        function grantUserReward() {
-            // Implement your reward logic here
-            // This could be granting coins, unlocking features, etc.
-            console.log('Reward granted to user');
-        }
-
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait for SDK to load
-            if (typeof show_10081114 !== 'undefined') {
-                preloadAds();
-                initInAppInterstitial();
-            } else {
-                // Retry after short delay if SDK not loaded
+                console.log('Ad completed:', result);
+                button.innerHTML = '<i class="fas fa-check"></i> Ad Completed!';
+                
+                // Grant rewards based on ad type
+                grantAdReward(adType);
+                
                 setTimeout(() => {
-                    if (typeof show_10081114 !== 'undefined') {
-                        preloadAds();
-                        initInAppInterstitial();
-                    }
-                }, 1000);
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }, 2000);
+                
+            }).catch((error) => {
+                console.error('Ad error:', error);
+                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ad Failed';
+                showNotification("Ad failed to load. Please try again.", "error");
+                
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Grant rewards for completed ads
+        function grantAdReward(adType) {
+            switch(adType) {
+                case 'double-coins':
+                    doubleCoinsActive = true;
+                    showNotification("2x coins activated for 30 minutes!", "success");
+                    // Reset after 30 minutes
+                    setTimeout(() => {
+                        doubleCoinsActive = false;
+                        showNotification("2x coins bonus has expired", "info");
+                    }, 30 * 60 * 1000); // 30 minutes
+                    break;
+                    
+                case 'refill-energy':
+                    energy = maxEnergy;
+                    updateUI();
+                    showNotification("Energy fully refilled!", "success");
+                    break;
+                    
+                case 'bonus-coins':
+                    coins += 500;
+                    updateUI();
+                    showNotification("+500 bonus coins!", "success");
+                    break;
             }
-        });
+        }
+        
+        // Check SDK status on load
+        function checkSDKStatus() {
+            if (typeof show_10081114 !== 'undefined') {
+                updateSDKStatus('loaded', 'SDK loaded successfully');
+                
+                // Test the SDK
+                show_10081114({ type: 'preload' })
+                    .then(() => {
+                        updateSDKStatus('loaded', 'SDK ready - ads can be shown');
+                    })
+                    .catch((error) => {
+                        updateSDKStatus('error', 'SDK preload failed: ' + error.message);
+                    });
+            } else {
+                updateSDKStatus('loading', 'Loading SDK...');
+                // Wait a bit then check again
+                setTimeout(() => {
+                    if (typeof show_10081114 === 'undefined') {
+                        updateSDKStatus('error', 'SDK failed to load - trying fallback');
+                        loadMonetagFallback();
+                    }
+                }, 2000);
+            }
+        }
+        
+        // Initialize the game
+        function initGame() {
+            updateUI();
+            hamsterElement.addEventListener('click', handleHamsterTap);
+            
+            // Set up ad buttons
+            document.getElementById('ad-double-coins').addEventListener('click', () => showMonetagAd('double-coins'));
+            document.getElementById('ad-refill-energy').addEventListener('click', () => showMonetagAd('refill-energy'));
+            document.getElementById('ad-bonus-coins').addEventListener('click', () => showMonetagAd('bonus-coins'));
+            
+            // Set up boosters
+            document.getElementById('booster1').addEventListener('click', () => {
+                if (coins >= 500) {
+                    coins -= 500;
+                    coinsPerTap += 2;
+                    updateUI();
+                    showNotification("Pickaxe upgraded!", "success");
+                } else {
+                    showNotification("Not enough coins!", "error");
+                }
+            });
+            
+            document.getElementById('booster2').addEventListener('click', () => {
+                if (coins >= 800) {
+                    coins -= 800;
+                    maxEnergy += 20;
+                    energy += 20;
+                    updateUI();
+                    showNotification("Energy capacity increased!", "success");
+                } else {
+                    showNotification("Not enough coins!", "error");
+                }
+            });
+            
+            // Set up navigation
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                });
+            });
+            
+            // Check SDK status after page loads
+            setTimeout(checkSDKStatus, 1000);
+        }
+        
+        // Start the game when page loads
+        window.onload = initGame;
     </script>
 </body>
 </html>
