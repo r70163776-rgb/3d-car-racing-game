@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src='//libtl.com/sdk.js' data-zone='10081114' data-sdk='show_10081114'></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hamster Miner - Telegram Game Clone</title>
+    <title>Hamster Miner - Monetag Rewards</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -279,6 +279,34 @@
             font-weight: 600;
         }
 
+        .task-action {
+            background: #ffcc00;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .task-action:hover {
+            background: #ffaa00;
+        }
+
+        .task-action:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .task-progress {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
         .navigation {
             display: flex;
             justify-content: space-around;
@@ -383,6 +411,73 @@
             opacity: 0;
         }
 
+        .monetag-rewards {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .reward-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .reward-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .reward-icon {
+            width: 30px;
+            height: 30px;
+            background: #ffcc00;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .reward-text {
+            font-size: 14px;
+        }
+
+        .reward-value {
+            font-size: 14px;
+            color: #ffcc00;
+            font-weight: 600;
+        }
+
+        .reward-action {
+            background: #ffcc00;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reward-action:hover {
+            background: #ffaa00;
+        }
+
+        .reward-action:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -391,6 +486,10 @@
 
         .pulse {
             animation: pulse 0.5s ease-in-out;
+        }
+
+        .completed {
+            background: rgba(0, 255, 0, 0.1);
         }
     </style>
 </head>
@@ -410,7 +509,7 @@
         <div class="game-container">
             <div class="stats-bar">
                 <div class="stat-item">
-                    <div class="stat-value" id="coin-count">1,250</div>
+                    <div class="stat-value" id="coin-count">250</div>
                     <div class="stat-label">COINS</div>
                 </div>
                 <div class="stat-item">
@@ -478,32 +577,72 @@
                 </div>
             </div>
 
+            <div class="monetag-rewards">
+                <div class="section-title">
+                    <i class="fas fa-coins"></i>
+                    Monetag Rewards
+                </div>
+                <div class="reward-item" id="reward1">
+                    <div class="reward-info">
+                        <div class="reward-icon"><i class="fas fa-play-circle"></i></div>
+                        <div class="reward-text">Watch Video Ad</div>
+                    </div>
+                    <div class="reward-value">+50 coins</div>
+                    <button class="reward-action" id="reward1-btn">Claim</button>
+                </div>
+                <div class="reward-item" id="reward2">
+                    <div class="reward-info">
+                        <div class="reward-icon"><i class="fas fa-share-alt"></i></div>
+                        <div class="reward-text">Share on Social Media</div>
+                    </div>
+                    <div class="reward-value">+100 coins</div>
+                    <button class="reward-action" id="reward2-btn">Claim</button>
+                </div>
+                <div class="reward-item" id="reward3">
+                    <div class="reward-info">
+                        <div class="reward-icon"><i class="fas fa-user-plus"></i></div>
+                        <div class="reward-text">Invite a Friend</div>
+                    </div>
+                    <div class="reward-value">+200 coins</div>
+                    <button class="reward-action" id="reward3-btn">Claim</button>
+                </div>
+            </div>
+
             <div class="tasks">
                 <div class="section-title">
                     <i class="fas fa-tasks"></i>
                     Daily Tasks
                 </div>
                 <div class="task-list">
-                    <div class="task">
+                    <div class="task" id="task1">
                         <div class="task-info">
                             <div class="task-icon"><i class="fas fa-check"></i></div>
-                            <div class="task-text">Mine 100 coins</div>
+                            <div>
+                                <div class="task-text">Mine 100 coins</div>
+                                <div class="task-progress">Progress: <span id="task1-progress">0</span>/100</div>
+                            </div>
                         </div>
-                        <div class="task-reward">+50 coins</div>
+                        <button class="task-action" id="task1-btn" disabled>Claim</button>
                     </div>
-                    <div class="task">
+                    <div class="task" id="task2">
                         <div class="task-info">
                             <div class="task-icon"><i class="fas fa-users"></i></div>
-                            <div class="task-text">Invite a friend</div>
+                            <div>
+                                <div class="task-text">Invite a friend</div>
+                                <div class="task-progress">Progress: <span id="task2-progress">0</span>/1</div>
+                            </div>
                         </div>
-                        <div class="task-reward">+200 coins</div>
+                        <button class="task-action" id="task2-btn" disabled>Claim</button>
                     </div>
-                    <div class="task">
+                    <div class="task" id="task3">
                         <div class="task-info">
                             <div class="task-icon"><i class="fas fa-star"></i></div>
-                            <div class="task-text">Reach level 6</div>
+                            <div>
+                                <div class="task-text">Reach level 6</div>
+                                <div class="task-progress">Progress: Level <span id="task3-progress">5</span>/6</div>
+                            </div>
                         </div>
-                        <div class="task-reward">+300 coins</div>
+                        <button class="task-action" id="task3-btn" disabled>Claim</button>
                     </div>
                 </div>
             </div>
@@ -542,6 +681,20 @@
         let combo = 0;
         let lastTapTime = 0;
         
+        // Task progress
+        let taskProgress = {
+            task1: { current: 0, target: 100, completed: false },
+            task2: { current: 0, target: 1, completed: false },
+            task3: { current: 5, target: 6, completed: false }
+        };
+        
+        // Reward tracking
+        let rewardsClaimed = {
+            reward1: false,
+            reward2: false,
+            reward3: false
+        };
+        
         // DOM elements
         const coinCountElement = document.getElementById('coin-count');
         const perTapElement = document.getElementById('per-tap');
@@ -558,6 +711,14 @@
             energyElement.textContent = `${energy}/${maxEnergy}`;
             levelProgressElement.style.width = `${levelProgress}%`;
             energyBarElement.style.width = `${(energy / maxEnergy) * 100}%`;
+            
+            // Update task progress
+            document.getElementById('task1-progress').textContent = taskProgress.task1.current;
+            document.getElementById('task2-progress').textContent = taskProgress.task2.current;
+            document.getElementById('task3-progress').textContent = taskProgress.task3.current;
+            
+            // Update task buttons
+            updateTaskButtons();
         }
         
         // Format numbers with commas
@@ -629,9 +790,13 @@
             energy -= 1;
             levelProgress = Math.min(100, levelProgress + 0.5);
             
+            // Update task progress
+            taskProgress.task1.current = Math.min(taskProgress.task1.target, taskProgress.task1.current + earnedCoins);
+            
             // Check for level up
             if (levelProgress >= 100) {
                 level++;
+                taskProgress.task3.current = level;
                 levelProgress = 0;
                 coinsPerTap += 2;
                 showNotification(`Level Up! Now level ${level}`);
@@ -658,6 +823,63 @@
                     updateUI();
                 }, 2000);
             }
+        }
+        
+        // Update task buttons based on progress
+        function updateTaskButtons() {
+            // Task 1: Mine 100 coins
+            if (taskProgress.task1.current >= taskProgress.task1.target && !taskProgress.task1.completed) {
+                document.getElementById('task1-btn').disabled = false;
+                document.getElementById('task1').classList.add('completed');
+            }
+            
+            // Task 2: Invite a friend
+            if (taskProgress.task2.current >= taskProgress.task2.target && !taskProgress.task2.completed) {
+                document.getElementById('task2-btn').disabled = false;
+                document.getElementById('task2').classList.add('completed');
+            }
+            
+            // Task 3: Reach level 6
+            if (taskProgress.task3.current >= taskProgress.task3.target && !taskProgress.task3.completed) {
+                document.getElementById('task3-btn').disabled = false;
+                document.getElementById('task3').classList.add('completed');
+            }
+        }
+        
+        // Handle task completion
+        function setupTasks() {
+            document.getElementById('task1-btn').addEventListener('click', () => {
+                if (taskProgress.task1.current >= taskProgress.task1.target && !taskProgress.task1.completed) {
+                    coins += 50;
+                    taskProgress.task1.completed = true;
+                    document.getElementById('task1-btn').disabled = true;
+                    document.getElementById('task1-btn').textContent = 'Claimed';
+                    updateUI();
+                    showNotification("Task completed! +50 coins");
+                }
+            });
+            
+            document.getElementById('task2-btn').addEventListener('click', () => {
+                if (taskProgress.task2.current >= taskProgress.task2.target && !taskProgress.task2.completed) {
+                    coins += 100;
+                    taskProgress.task2.completed = true;
+                    document.getElementById('task2-btn').disabled = true;
+                    document.getElementById('task2-btn').textContent = 'Claimed';
+                    updateUI();
+                    showNotification("Task completed! +100 coins");
+                }
+            });
+            
+            document.getElementById('task3-btn').addEventListener('click', () => {
+                if (taskProgress.task3.current >= taskProgress.task3.target && !taskProgress.task3.completed) {
+                    coins += 150;
+                    taskProgress.task3.completed = true;
+                    document.getElementById('task3-btn').disabled = true;
+                    document.getElementById('task3-btn').textContent = 'Claimed';
+                    updateUI();
+                    showNotification("Task completed! +150 coins");
+                }
+            });
         }
         
         // Handle booster purchases
@@ -715,11 +937,65 @@
             });
         }
         
+        // Handle Monetag rewards
+        function setupRewards() {
+            document.getElementById('reward1-btn').addEventListener('click', () => {
+                if (!rewardsClaimed.reward1) {
+                    // Simulate watching an ad
+                    showNotification("Watching ad...");
+                    setTimeout(() => {
+                        coins += 50;
+                        rewardsClaimed.reward1 = true;
+                        document.getElementById('reward1-btn').disabled = true;
+                        document.getElementById('reward1-btn').textContent = 'Claimed';
+                        document.getElementById('reward1').classList.add('completed');
+                        updateUI();
+                        showNotification("Reward claimed! +50 coins");
+                    }, 2000);
+                }
+            });
+            
+            document.getElementById('reward2-btn').addEventListener('click', () => {
+                if (!rewardsClaimed.reward2) {
+                    // Simulate sharing
+                    showNotification("Sharing to social media...");
+                    setTimeout(() => {
+                        coins += 100;
+                        rewardsClaimed.reward2 = true;
+                        document.getElementById('reward2-btn').disabled = true;
+                        document.getElementById('reward2-btn').textContent = 'Claimed';
+                        document.getElementById('reward2').classList.add('completed');
+                        updateUI();
+                        showNotification("Reward claimed! +100 coins");
+                    }, 1500);
+                }
+            });
+            
+            document.getElementById('reward3-btn').addEventListener('click', () => {
+                if (!rewardsClaimed.reward3) {
+                    // Simulate inviting a friend
+                    showNotification("Inviting a friend...");
+                    setTimeout(() => {
+                        coins += 200;
+                        taskProgress.task2.current = 1; // Complete the invite task
+                        rewardsClaimed.reward3 = true;
+                        document.getElementById('reward3-btn').disabled = true;
+                        document.getElementById('reward3-btn').textContent = 'Claimed';
+                        document.getElementById('reward3').classList.add('completed');
+                        updateUI();
+                        showNotification("Reward claimed! +200 coins");
+                    }, 1500);
+                }
+            });
+        }
+        
         // Initialize the game
         function initGame() {
             updateUI();
             hamsterElement.addEventListener('click', handleHamsterTap);
             setupBoosters();
+            setupTasks();
+            setupRewards();
             
             // Set up navigation
             const navItems = document.querySelectorAll('.nav-item');
