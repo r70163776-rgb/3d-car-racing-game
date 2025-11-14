@@ -1,107 +1,133 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-// کھلاڑی کی خصوصیات
-const player = {
-    x: canvas.width / 2 - 25,
-    y: canvas.height - 100,
-    width: 50,
-    height: 50,
-    color: 'orange',
-    speed: 5,
-    lane: 1 // 0: بائیں, 1: درمیان, 2: دائیں
-};
-
-// رکاوٹوں کی خصوصیات
-let obstacles = [];
-const obstacleWidth = 50;
-const obstacleHeight = 50;
-const obstacleColor = 'red';
-let obstacleSpeed = 3;
-let score = 0;
-
-// کھلاڑی کو ڈرا کریں
-function drawPlayer() {
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-}
-
-// رکاوٹوں کو ڈرا کریں
-function drawObstacles() {
-    for (let i = 0; i < obstacles.length; i++) {
-        ctx.fillStyle = obstacleColor;
-        ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacleWidth, obstacleHeight);
-    }
-}
-
-// رکاوٹیں بنائیں
-function createObstacle() {
-    const lane = Math.floor(Math.random() * 3); // 0, 1, یا 2
-    const x = (canvas.width / 3) * lane + (canvas.width / 6) - (obstacleWidth / 2);
-    obstacles.push({ x: x, y: -obstacleHeight });
-}
-
-// رکاوٹوں کو حرکت دیں
-function moveObstacles() {
-    for (let i = 0; i < obstacles.length; i++) {
-        obstacles[i].y += obstacleSpeed;
-    }
-}
-
-// ٹکراؤ کا پتہ لگائیں
-function checkCollision() {
-    for (let i = 0; i < obstacles.length; i++) {
-        if (
-            player.x < obstacles[i].x + obstacleWidth &&
-            player.x + player.width > obstacles[i].x &&
-            player.y < obstacles[i].y + obstacleHeight &&
-            player.y + player.height > obstacles[i].y
-        ) {
-            return true;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Puzzle Game</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
         }
-    }
-    return false;
-}
+        h1 {
+            text-align: center;
+        }
+        canvas {
+            border: 2px solid #30363d;
+            background-color: #010409;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Block Puzzle Game</h1>
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
-// اسکور ڈرا کریں
-function drawScore() {
-    ctx.fillStyle = 'black';
-    ctx.font = '24px Arial';
-    ctx.fillText('اسکور: ' + score, 10, 30);
-}
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const context = canvas.getContext('2d');
 
-// گیم لوپ
-function gameLoop() {
-    // کینوس صاف کریں
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const GRID_COLUMNS = 10;
+        const GRID_ROWS = 20;
+        const BLOCK_SIZE = 30;
 
-    drawPlayer();
-    drawObstacles();
-    moveObstacles();
-    drawScore();
+        // کینوس کا سائز سیٹ کریں
+        canvas.width = GRID_COLUMNS * BLOCK_SIZE;
+        canvas.height = GRID_ROWS * BLOCK_SIZE;
 
-    // ہر 100 فریم میں ایک نئی رکاوٹ بنائیں
-    if (score % 100 === 0) {
-        createObstacle();
-    }
+        // بلاک کی شکلیں (ٹیٹرس کی طرح)
+        const shapes = [
+            // I-شکل
+            [[1, 1, 1, 1]],
+            // L-شکل
+            [[1, 0, 0], [1, 1, 1]],
+            // J-شکل
+            [[0, 0, 1], [1, 1, 1]],
+            // O-شکل
+            [[1, 1], [1, 1]],
+            // T-شکل
+            [[0, 1, 0], [1, 1, 1]],
+            // S-شکل
+            [[0, 1, 1], [1, 1, 0]],
+            // Z-شکل
+            [[1, 1, 0], [0, 1, 1]]
+        ];
 
-    if (checkCollision()) {
-        alert('گیم ختم! آپ کا اسکور: ' + score);
-        document.location.reload();
-    }
+        const colors = [
+            '#000000', // خالی
+            '#00f0f0', // I (Cyan)
+            '#f0a000', // L (Orange)
+            '#0000f0', // J (Blue)
+            '#f0f000', // O (Yellow)
+            '#a000f0', // T (Purple)
+            '#00f000', // S (Green)
+            '#f00000'  // Z (Red)
+        ];
 
-    score++;
-    requestAnimationFrame(gameLoop);
-}
+        // گیم گرڈ بنائیں
+        let grid = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLUMNS).fill(0));
 
-// کھلاڑی کی حرکت کو کنٹرول کریں
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft' && player.lane > 0) {
-        player.lane--;
-    } else if (e.key === 'ArrowRight' && player.lane < 2) {
-        player.lane++;
-    }
-    player.x = (canvas.width / 3) * player.lane + (canvas.width / 6) - (player.width / 2);
-});
+        let currentShape;
+        let currentColor;
+        let currentX;
+        let currentY;
 
-gameLoop();
+        // نیا بلاک بنانے کا فنکشن
+        function createNewShape() {
+            const shapeIndex = Math.floor(Math.random() * shapes.length);
+            currentShape = shapes[shapeIndex];
+            currentColor = colors[shapeIndex + 1];
+            currentX = Math.floor(GRID_COLUMNS / 2) - Math.floor(currentShape[0].length / 2);
+            currentY = 0;
+        }
+
+        // اسکرین پر ہر چیز ڈرا کرنے کا فنکشن
+        function draw() {
+            // پس منظر صاف کریں
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // گرڈ میں موجود بلاکس ڈرا کریں
+            for (let y = 0; y < GRID_ROWS; y++) {
+                for (let x = 0; x < GRID_COLUMNS; x++) {
+                    if (grid[y][x]) {
+                        context.fillStyle = colors[grid[y][x]];
+                        context.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        context.strokeStyle = '#010409';
+                        context.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+
+            // حرکت کرنے والا بلاک ڈرا کریں
+            context.fillStyle = currentColor;
+            currentShape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        context.fillRect((currentX + x) * BLOCK_SIZE, (currentY + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        context.strokeStyle = '#010409';
+                        context.strokeRect((currentX + x) * BLOCK_SIZE, (currentY + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                });
+            });
+        }
+
+        // گیم کا بنیادی لوپ
+        function gameLoop() {
+            draw();
+            // مزید گیم منطق یہاں آئے گی (جیسے بلاک کو نیچے گرانا، ان پٹ لینا وغیرہ)
+            requestAnimationFrame(gameLoop);
+        }
+
+        createNewShape();
+        gameLoop();
+
+    </script>
+</body>
+</html>
