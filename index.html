@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Car Racing - Real Monetag Ads</title>
+    <title>3D Car Racing - Monetag Ads</title>
     
     <!-- Monetag SDK -->
     <script src='//libtl.com/sdk.js' data-zone='10183375' data-sdk='show_10183375'></script>
@@ -206,10 +206,25 @@
             z-index: 50;
         }
 
+        /* Ad Status Messages */
+        #ad-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 103;
+            text-align: center;
+        }
+
     </style>
 </head>
 <body>
-    <div id="loading-screen">Loading Game Assets...</div>
+    <div id="loading-screen">Loading...</div>
     <div id="container"></div>
 
     <!-- UI Elements -->
@@ -256,90 +271,46 @@
         <button class="ad-button" style="background:linear-gradient(45deg,#FF6B6B,#FF8E53);margin-top: 10px;" onclick="watchAdForCoins()">🎁 Get 500 Coins (Ad)</button>
     </div>
 
-    <script>
-        // === Monetag Ad Functions ===
-        
-        function watchAdToContinue() {
-            console.log("Showing rewarded interstitial ad for continue...");
-            
-            // Rewarded Interstitial - User watches ad to continue game
-            show_10183375().then(() => {
-                // User watched ad till end - reward them
-                console.log("User watched ad - continuing game");
-                continueGame();
-            }).catch(error => {
-                // User skipped ad or error occurred
-                console.log("Ad skipped or error:", error);
-                continueGame(); // Still continue as fallback
-            });
-        }
+    <!-- Ad Status Message -->
+    <div id="ad-status"></div>
 
-        function watchAdForDoubleCoins() {
-            console.log("Showing rewarded popup ad for double coins...");
-            
-            // Rewarded Popup - User watches ad for double coins
-            show_10183375('pop').then(() => {
-                // User watched ad till end - reward them with double coins
-                console.log("User watched ad - activating double coins");
-                activateDoubleCoins();
-            }).catch(error => {
-                // User skipped ad or error occurred
-                console.log("Ad skipped or error:", error);
-                activateDoubleCoins(); // Still activate as fallback
-            });
+    <!-- Import Maps -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+            }
         }
+    </script>
 
-        function watchAdForShield() {
-            console.log("Showing rewarded popup ad for shield...");
-            
-            // Rewarded Popup - User watches ad for shield
-            show_10183375('pop').then(() => {
-                // User watched ad till end - reward them with shield
-                console.log("User watched ad - activating shield");
-                activateShieldPower();
-            }).catch(error => {
-                // User skipped ad or error occurred
-                console.log("Ad skipped or error:", error);
-                activateShieldPower(); // Still activate as fallback
-            });
-        }
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-        function watchAdForCoins() {
-            console.log("Showing rewarded interstitial ad for coins...");
-            
-            // Rewarded Interstitial - User watches ad for coins
-            show_10183375().then(() => {
-                // User watched ad till end - reward them with coins
-                console.log("User watched ad - adding 500 coins");
-                coins += 500;
-                updateCoinsDisplay();
-            }).catch(error => {
-                // User skipped ad or error occurred
-                console.log("Ad skipped or error:", error);
-                coins += 500; // Still add coins as fallback
-                updateCoinsDisplay();
-            });
-        }
+        let scene, camera, renderer, carModel, enemyCar;
+        let ambientLight, directionalLight;
+        let road, roadLines = [], kerbs = [];
+        let buildings = [], streetLights = [], trafficLights = [];
+        const roadWidth = 10;
+        const roadLength = 200;
+        const buildingSpacing = 15;
+        const lightSpacing = 30;
+        const numBuildings = Math.floor(roadLength / buildingSpacing);
+        const numLights = Math.floor(roadLength / lightSpacing);
+        const driveSpeed = 0.5;
+        const enemyCarSpeed = 0.4;
+        const kerbHeight = 0.2;
+        const kerbWidth = 0.3;
 
-        function loadInAppInterstitial() {
-            console.log("Loading in-app interstitial ad...");
-            
-            // In-App Interstitial - Shows automatically
-            show_10183375({
-                type: 'inApp',
-                inAppSettings: {
-                    frequency: 2,
-                    capping: 0.1,
-                    interval: 30,
-                    timeout: 5,
-                    everyPage: false
-                }
-            });
-        }
-
-        // === Game Variables ===
-        let coins = 0;
+        // --- Enhanced Game State ---
+        let moveLeft = false;
+        let moveRight = false;
+        const carMoveSpeed = 0.15;
+        let carBaseY = 0;
         let score = 0;
+        let coins = 0;
         let isGameOver = false;
         let activeShield = false;
         let doubleCoinsActive = false;
@@ -348,149 +319,533 @@
             speed: 1,
             shield: false
         };
+        // --- End Enhanced Game State ---
 
-        // === UI Update Functions ===
-        function updateScoreDisplay() { 
-            document.getElementById('score').textContent = `Score: ${score}`; 
-        }
+        // --- Points ---
+        const points = [];
+        const numPoints = 15;
+        const pointValue = 10;
+        let pointGeometry, pointMaterial;
+        const pointRadius = 0.3;
+        // --- End Points ---
+
+        // --- UI Elements References ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const scoreElement = document.getElementById('score');
+        const coinsElement = document.getElementById('coins');
+        const gameOverElement = document.getElementById('game-over');
+        const continueAdBtn = document.getElementById('continue-ad-btn');
+        const doubleCoinsAdBtn = document.getElementById('double-coins-ad-btn');
+        const bonusShieldAdBtn = document.getElementById('bonus-shield-ad-btn');
+        const shieldIndicator = document.getElementById('shield-indicator');
+        const shopMenu = document.getElementById('shop-menu');
+        const shopCoinsElement = document.getElementById('shop-coins');
+        const adStatus = document.getElementById('ad-status');
+        // --- End UI Refs ---
+
+        // --- Bounding Boxes ---
+        let playerBox = new THREE.Box3();
+        let enemyBox = new THREE.Box3();
+        let pointBox = new THREE.Box3();
+        // --- End Bounding Boxes ---
+
+        // --- Monetag State ---
+        let monetagLoaded = false;
+        let adInitialized = false;
+        // --- End Monetag State ---
+
+        const loadingManager = new THREE.LoadingManager();
+
+        // Loading Manager Callbacks
+        loadingManager.onLoad = () => { 
+            console.log("All resources loaded!"); 
+            loadingScreen.classList.add('hidden'); 
+            setTimeout(() => { 
+                if (loadingScreen) loadingScreen.style.display = 'none'; 
+                initializeMonetag();
+            }, 600); 
+        };
         
-        function updateCoinsDisplay() { 
-            document.getElementById('coins').textContent = `🪙 Coins: ${coins}`; 
-            document.getElementById('shop-coins').textContent = coins;
-        }
+        loadingManager.onError = (url) => { 
+            console.error(`There was an error loading ${url}`); 
+            loadingScreen.textContent = `Error loading: ${url}. Check console.`; 
+            loadingScreen.classList.remove('hidden'); 
+            loadingScreen.style.opacity = 1; 
+        };
+        
+        loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => { 
+            console.log(`Loading file: ${url} (${itemsLoaded}/${itemsTotal})`); 
+            const progress = Math.round((itemsLoaded / itemsTotal) * 100); 
+            loadingScreen.textContent = `Loading ${progress}%...`; 
+        };
 
-        // === Game Functions ===
-        function continueGame() {
-            isGameOver = false;
-            document.getElementById('game-over').style.display = 'none';
-            document.getElementById('continue-ad-btn').style.display = 'none';
-            console.log("Game continued after ad watch");
-        }
-
-        function activateDoubleCoins() {
-            doubleCoinsActive = true;
-            console.log("Double coins activated for 30 seconds");
-            setTimeout(() => {
-                doubleCoinsActive = false;
-                console.log("Double coins deactivated");
-            }, 30000);
-        }
-
-        function activateShieldPower() {
-            activeShield = true;
-            document.getElementById('shield-indicator').style.display = 'flex';
-            console.log("Shield activated for 15 seconds");
-            setTimeout(() => {
-                activeShield = false;
-                document.getElementById('shield-indicator').style.display = 'none';
-                console.log("Shield deactivated");
-            }, 15000);
-        }
-
-        function toggleShop() {
-            const shopMenu = document.getElementById('shop-menu');
-            if (shopMenu.style.display === 'block') {
-                closeShop();
-            } else {
-                shopMenu.style.display = 'block';
-            }
-        }
-
-        function closeShop() {
-            document.getElementById('shop-menu').style.display = 'none';
-        }
-
-        function buyUpgrade(type) {
-            const costs = {
-                doubleCoins: 500,
-                speed: 300,
-                shield: 200
-            };
-
-            if (coins >= costs[type]) {
-                coins -= costs[type];
+        // Initialize Monetag SDK
+        function initializeMonetag() {
+            // Check if monetag is already loaded
+            if (typeof monetag !== 'undefined') {
+                monetagLoaded = true;
+                adInitialized = true;
+                console.log("Monetag SDK loaded successfully!");
+                showAdStatus("🎯 Monetag Ads Ready!", "success");
                 
-                switch(type) {
-                    case 'doubleCoins':
-                        playerUpgrades.doubleCoins = true;
-                        console.log("Permanent 2x coins purchased");
-                        break;
-                    case 'speed':
-                        playerUpgrades.speed = 1.5;
-                        console.log("Speed boost purchased");
-                        break;
-                    case 'shield':
-                        activateShieldPower();
-                        break;
-                }
-                
-                updateCoinsDisplay();
-            } else {
-                console.log("Not enough coins for upgrade");
+                // Show initial interstitial after SDK loads
+                setTimeout(() => {
+                    loadInAppInterstitial();
+                }, 2000);
+                return;
             }
-        }
 
-        // === Game Initialization ===
-        function initGame() {
-            console.log("Initializing game...");
-            updateScoreDisplay();
-            updateCoinsDisplay();
-            
-            // Load initial interstitial ad when game starts
-            setTimeout(() => {
-                loadInAppInterstitial();
-            }, 3000);
-        }
-
-        // Start the game when page loads
-        window.addEventListener('load', function() {
-            console.log("Page loaded - starting game");
-            setTimeout(() => {
-                document.getElementById('loading-screen').classList.add('hidden');
-                initGame();
-            }, 2000);
-        });
-
-        // Simulate game events for testing
-        function simulateGamePlay() {
-            // Simulate score increase
-            setInterval(() => {
-                if (!isGameOver) {
-                    score += 10;
-                    updateScoreDisplay();
+            // Wait for Monetag to load
+            const checkMonetag = setInterval(() => {
+                if (typeof monetag !== 'undefined') {
+                    clearInterval(checkMonetag);
+                    monetagLoaded = true;
+                    adInitialized = true;
+                    console.log("Monetag SDK loaded successfully!");
+                    showAdStatus("🎯 Monetag Ads Ready!", "success");
+                    
+                    setTimeout(() => {
+                        loadInAppInterstitial();
+                    }, 2000);
                 }
             }, 1000);
 
-            // Simulate coin collection
-            setInterval(() => {
-                if (!isGameOver) {
-                    let coinValue = 5;
-                    if (doubleCoinsActive || playerUpgrades.doubleCoins) {
-                        coinValue *= 2;
-                    }
-                    coins += coinValue;
-                    updateCoinsDisplay();
-                }
-            }, 2000);
-
-            // Simulate game over after 30 seconds for testing
+            // Timeout after 10 seconds
             setTimeout(() => {
-                if (!isGameOver) {
-                    isGameOver = true;
-                    document.getElementById('game-over').style.display = 'block';
-                    document.getElementById('continue-ad-btn').style.display = 'block';
-                    console.log("Game over - show continue ad button");
+                if (!monetagLoaded) {
+                    clearInterval(checkMonetag);
+                    console.log("Monetag SDK timeout - using demo mode");
+                    showAdStatus("⚠️ Using Demo Mode", "info");
+                    monetagLoaded = false;
+                    adInitialized = true;
                 }
-            }, 30000);
+            }, 10000);
         }
 
-        // Start simulated gameplay
-        setTimeout(simulateGamePlay, 3000);
+        function showAdStatus(message, type = "info") {
+            adStatus.textContent = message;
+            adStatus.style.display = 'block';
+            adStatus.style.background = type === "success" ? "rgba(0, 255, 0, 0.8)" : 
+                                      type === "error" ? "rgba(255, 0, 0, 0.8)" : 
+                                      "rgba(255, 215, 0, 0.8)";
+            
+            setTimeout(() => {
+                adStatus.style.display = 'none';
+            }, 3000);
+        }
 
-    </script>
+        init();
+        setupControls();
+        animate();
 
-    <!-- Three.js Game Code Would Go Here -->
-    <!-- For demo purposes, we're focusing on ad integration -->
+        function init() {
+            // --- Basic Setup ---
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xa0d7e6);
+            scene.fog = new THREE.Fog(0xa0d7e6, roadLength * 0.4, roadLength * 0.9);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            document.getElementById('container').appendChild(renderer.domElement);
 
-</body>
-</html>
+            // --- Lights ---
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+            directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+            directionalLight.position.set(50, 100, 50); 
+            directionalLight.castShadow = true; 
+            directionalLight.shadow.mapSize.width = 2048; 
+            directionalLight.shadow.mapSize.height = 2048; 
+            directionalLight.shadow.camera.near = 0.5; 
+            directionalLight.shadow.camera.far = 500; 
+            directionalLight.shadow.camera.left = -roadLength / 2; 
+            directionalLight.shadow.camera.right = roadLength / 2; 
+            directionalLight.shadow.camera.top = roadLength / 2; 
+            directionalLight.shadow.camera.bottom = -roadLength / 2; 
+            scene.add(directionalLight);
+
+            // --- Ground, Road, Lines, Kerbs ---
+            const groundGeo = new THREE.PlaneGeometry(roadLength * 1.5, roadLength); 
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x55aa55, side: THREE.DoubleSide }); 
+            const ground = new THREE.Mesh(groundGeo, groundMat); 
+            ground.rotation.x = -Math.PI / 2; 
+            ground.position.y = -0.05; 
+            ground.receiveShadow = true; 
+            scene.add(ground);
+            
+            const roadGeo = new THREE.PlaneGeometry(roadWidth, roadLength); 
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x555555, side: THREE.DoubleSide }); 
+            road = new THREE.Mesh(roadGeo, roadMat); 
+            road.rotation.x = -Math.PI / 2; 
+            road.position.y = 0.0; 
+            road.receiveShadow = true; 
+            scene.add(road);
+            
+            const lineLength = 4; 
+            const lineGap = 4; 
+            const numLines = Math.floor(roadLength / (lineLength + lineGap)); 
+            const lineGeo = new THREE.PlaneGeometry(0.3, lineLength); 
+            const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            
+            for (let i = 0; i < numLines; i++) { 
+                const line = new THREE.Mesh(lineGeo, lineMat); 
+                line.rotation.x = -Math.PI / 2; 
+                line.position.y = 0.005; 
+                line.position.z = (roadLength / 2) - (lineLength / 2) - i * (lineLength + lineGap); 
+                line.receiveShadow = true; 
+                roadLines.push(line); 
+                scene.add(line); 
+            }
+            
+            function createKerbTexture() { 
+                const canvas = document.createElement('canvas'); 
+                const ctx = canvas.getContext('2d'); 
+                canvas.width = 64; 
+                canvas.height = 16; 
+                const stripeWidth = 8; 
+                const colors = ['#ff0000', '#ffffff']; 
+                for (let i = 0; i < canvas.width / stripeWidth; i++) { 
+                    ctx.fillStyle = colors[i % 2]; 
+                    ctx.fillRect(i * stripeWidth, 0, stripeWidth, canvas.height); 
+                } 
+                return new THREE.CanvasTexture(canvas); 
+            }
+            
+            const kerbTexture = createKerbTexture(); 
+            kerbTexture.wrapS = THREE.RepeatWrapping; 
+            kerbTexture.wrapT = THREE.ClampToEdgeWrapping; 
+            kerbTexture.repeat.set(roadLength / 4, 1);
+            
+            const kerbGeo = new THREE.BoxGeometry(kerbWidth, kerbHeight, roadLength); 
+            const kerbMat = new THREE.MeshStandardMaterial({ map: kerbTexture });
+            
+            const kerbLeft = new THREE.Mesh(kerbGeo, kerbMat); 
+            kerbLeft.position.set(-(roadWidth / 2) - (kerbWidth / 2), kerbHeight / 2, 0); 
+            kerbLeft.castShadow = true; 
+            kerbLeft.receiveShadow = true; 
+            scene.add(kerbLeft); 
+            kerbs.push(kerbLeft);
+            
+            const kerbRight = new THREE.Mesh(kerbGeo, kerbMat); 
+            kerbRight.position.set((roadWidth / 2) + (kerbWidth / 2), kerbHeight / 2, 0); 
+            kerbRight.castShadow = true; 
+            kerbRight.receiveShadow = true; 
+            scene.add(kerbRight); 
+            kerbs.push(kerbRight);
+
+            // --- Buildings, Street Lights, Traffic Lights ---
+            function createBuilding() { 
+                const height = Math.random() * 30 + 10; 
+                const width = Math.random() * 8 + 4; 
+                const depth = Math.random() * 8 + 4; 
+                const buildingGeo = new THREE.BoxGeometry(width, height, depth); 
+                const buildingMat = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color(Math.random() * 0.8 + 0.1, Math.random() * 0.8 + 0.1, Math.random() * 0.8 + 0.1), 
+                    roughness: 0.8, 
+                    metalness: 0.1 
+                }); 
+                const building = new THREE.Mesh(buildingGeo, buildingMat); 
+                building.position.y = height / 2; 
+                building.castShadow = true; 
+                building.receiveShadow = true; 
+                return building; 
+            }
+            
+            for (let i = 0; i < numBuildings; i++) { 
+                const buildingLeft = createBuilding(); 
+                const buildingRight = createBuilding(); 
+                const zPos = (roadLength / 2) - (buildingSpacing / 2) - i * buildingSpacing; 
+                const xOffsetLeft = roadWidth / 2 + kerbWidth + 1 + Math.random() * 5 + buildingLeft.geometry.parameters.width / 2; 
+                const xOffsetRight = roadWidth / 2 + kerbWidth + 1 + Math.random() * 5 + buildingRight.geometry.parameters.width / 2; 
+                buildingLeft.position.set(-xOffsetLeft, buildingLeft.position.y, zPos); 
+                buildingRight.position.set(xOffsetRight, buildingRight.position.y, zPos); 
+                buildings.push(buildingLeft, buildingRight); 
+                scene.add(buildingLeft); 
+                scene.add(buildingRight); 
+            }
+
+            // --- Points Setup ---
+            pointGeometry = new THREE.SphereGeometry(pointRadius, 8, 8);
+            pointMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaaaa00, emissiveIntensity: 0.8 });
+            for (let i = 0; i < numPoints; i++) { 
+                const point = new THREE.Mesh(pointGeometry, pointMaterial); 
+                point.castShadow = true; 
+                resetPointPosition(point, true); 
+                points.push(point); 
+                scene.add(point); 
+            }
+
+            // --- Car Model Loading ---
+            const loader = new GLTFLoader(loadingManager);
+            const dracoLoader = new DRACOLoader(loadingManager);
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+            loader.setDRACOLoader(dracoLoader);
+            const carUrl = 'https://threejs.org/examples/models/gltf/ferrari.glb';
+
+            loader.load(carUrl, (gltf) => {
+                carModel = gltf.scene;
+                carModel.scale.set(0.8, 0.8, 0.8);
+                const box = new THREE.Box3().setFromObject(carModel);
+                carBaseY = -box.min.y + 0.01;
+                carModel.position.set(0, carBaseY, 0);
+                carModel.rotation.y = Math.PI;
+                carModel.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+                scene.add(carModel);
+
+                // Enemy Car Setup
+                enemyCar = carModel.clone();
+                enemyCar.traverse((node) => { 
+                    if (node.isMesh) { 
+                        const blueMaterial = node.material.clone(); 
+                        blueMaterial.color.setHex(0x0000ff); 
+                        node.material = blueMaterial; 
+                        node.castShadow = true; 
+                        node.receiveShadow = true; 
+                    } 
+                });
+                const initialEnemyX = (Math.random() < 0.5 ? -1 : 1) * roadWidth / 4;
+                enemyCar.position.set(initialEnemyX, carBaseY, roadLength * 0.7);
+                enemyCar.rotation.y = Math.PI;
+                scene.add(enemyCar);
+
+                // Set initial Camera position
+                camera.position.set(0, carBaseY + 3, -7);
+                camera.lookAt(carModel.position.x, carBaseY + 1, carModel.position.z + 5);
+
+            }, undefined, (error) => {
+                console.error('An error happened loading the car model:', error); 
+                const fallbackGeo = new THREE.BoxGeometry(2, 1, 4); 
+                const fallbackMat = new THREE.MeshStandardMaterial({color: 0xff0000}); 
+                carModel = new THREE.Mesh(fallbackGeo, fallbackMat); 
+                carBaseY = 0.5 + 0.01; 
+                carModel.position.set(0, carBaseY, 0); 
+                carModel.castShadow = true; 
+                carModel.receiveShadow = true; 
+                scene.add(carModel); 
+                camera.position.set(0, carBaseY + 3, -7); 
+                camera.lookAt(carModel.position.x, carBaseY + 1, carModel.position.z + 5); 
+                loadingScreen.textContent = 'Error loading car model. Displaying fallback.'; 
+                loadingScreen.classList.remove('hidden'); 
+                loadingScreen.style.opacity = 1;
+            });
+
+            // --- Resize Listener ---
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // --- Initial Display ---
+            updateScoreDisplay();
+            updateCoinsDisplay();
+        }
+
+        function setupControls() {
+            // Keyboard Listeners
+            window.addEventListener('keydown', (event) => {
+                if (isGameOver) return;
+                if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') { moveLeft = true; }
+                else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') { moveRight = true; }
+                else if (event.key === 'Escape') { toggleShop(); }
+            });
+            
+            window.addEventListener('keyup', (event) => {
+                if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') { moveLeft = false; }
+                else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') { moveRight = false; }
+            });
+
+            // Touch Listeners for Buttons
+            const leftButton = document.getElementById('left-button');
+            const rightButton = document.getElementById('right-button');
+
+            if (leftButton) {
+                leftButton.addEventListener('touchstart', (e) => { if (!isGameOver) { e.preventDefault(); moveLeft = true; } }, { passive: false });
+                leftButton.addEventListener('touchend', (e) => { e.preventDefault(); moveLeft = false; });
+                leftButton.addEventListener('touchcancel', (e) => { e.preventDefault(); moveLeft = false; });
+            }
+            
+            if (rightButton) {
+                rightButton.addEventListener('touchstart', (e) => { if (!isGameOver) { e.preventDefault(); moveRight = true; } }, { passive: false });
+                rightButton.addEventListener('touchend', (e) => { e.preventDefault(); moveRight = false; });
+                rightButton.addEventListener('touchcancel', (e) => { e.preventDefault(); moveRight = false; });
+            }
+
+            // Ad Button Listeners
+            continueAdBtn.addEventListener('click', watchAdToContinue);
+            doubleCoinsAdBtn.addEventListener('click', watchAdForDoubleCoins);
+            bonusShieldAdBtn.addEventListener('click', watchAdForShield);
+            document.getElementById('open-shop-btn').addEventListener('click', toggleShop);
+        }
+
+        function resetPointPosition(point, initial = false) {
+            const laneWidth = roadWidth / 2 - kerbWidth - pointRadius * 2;
+            point.position.x = (Math.random() * 2 - 1) * laneWidth;
+            point.position.y = pointRadius + 0.01;
+            if (initial) { point.position.z = Math.random() * roadLength - roadLength / 2; }
+            else { point.position.z = roadLength / 2 + Math.random() * roadLength * 0.5; }
+            point.visible = true;
+        }
+
+        function updateScoreDisplay() { scoreElement.textContent = `Score: ${score}`; }
+        function updateCoinsDisplay() { 
+            coinsElement.textContent = `🪙 Coins: ${coins}`; 
+            shopCoinsElement.textContent = coins;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isGameOver) return;
+
+            const deltaZ = driveSpeed * playerUpgrades.speed;
+
+            // --- Scenery Movement ---
+            roadLines.forEach(line => { line.position.z -= deltaZ; if (line.position.z < -roadLength / 2) { line.position.z += roadLength; } });
+            buildings.forEach(building => { building.position.z -= deltaZ; if (building.position.z < -roadLength / 2 - building.geometry.parameters.depth / 2) { building.position.z += roadLength + Math.random() * buildingSpacing * 2; const sideSign = Math.sign(building.position.x); const xOffset = roadWidth / 2 + kerbWidth + 1 + Math.random() * 5 + building.geometry.parameters.width / 2; building.position.x = sideSign * xOffset; } });
+            streetLights.forEach(light => { light.position.z -= deltaZ; if (light.position.z < -roadLength / 2) { light.position.z += roadLength + Math.random() * lightSpacing * 2; } });
+            trafficLights.forEach(light => { light.position.z -= deltaZ; if (light.position.z < -roadLength / 2) { light.position.z += roadLength * 1.5 + Math.random() * roadLength; } });
+            kerbs.forEach(kerb => { kerb.position.z -= deltaZ; if (kerb.position.z < -roadLength / 2) { kerb.position.z += roadLength; } });
+
+            // --- Move and Recycle Points ---
+            points.forEach(point => { if (!point.visible) return; point.position.z -= deltaZ; if (point.position.z < -roadLength / 2) { resetPointPosition(point); } });
+
+            // --- Move Enemy Car ---
+            if (enemyCar) {
+                enemyCar.position.z -= enemyCarSpeed;
+                if (enemyCar.position.z < -roadLength / 2 - 10) {
+                    enemyCar.position.z = roadLength / 2 + Math.random() * 50;
+                    enemyCar.position.x = (Math.random() < 0.5 ? -1 : 1) * roadWidth / 4 * (0.5 + Math.random());
+                }
+            }
+
+            // --- FIXED: Handle Player Car Controls ---
+            if (carModel && carBaseY > 0) {
+                // Fixed bounds calculation
+                const maxBounds = (roadWidth / 2) - 1.5; // Simple fixed bounds
+
+                if (moveLeft) { 
+                    carModel.position.x -= carMoveSpeed; 
+                }
+                if (moveRight) { 
+                    carModel.position.x += carMoveSpeed; 
+                }
+                
+                // Apply bounds
+                carModel.position.x = Math.max(-maxBounds, Math.min(maxBounds, carModel.position.x));
+
+                // Update Player Bounding Box
+                playerBox.setFromObject(carModel);
+
+                // Update Camera
+                const targetCameraX = carModel.position.x * 0.5;
+                camera.position.x += (targetCameraX - camera.position.x) * 0.1;
+                camera.lookAt(carModel.position.x, carBaseY + 1, carModel.position.z + 5);
+            }
+
+            // --- Collision Detection ---
+            if (carModel) {
+                // Point Collision
+                points.forEach(point => { 
+                    if (!point.visible) return; 
+                    pointBox.setFromObject(point); 
+                    if (playerBox.intersectsBox(pointBox)) { 
+                        let coinValue = pointValue;
+                        if (doubleCoinsActive || playerUpgrades.doubleCoins) {
+                            coinValue *= 2;
+                        }
+                        coins += coinValue;
+                        score += pointValue;
+                        updateScoreDisplay();
+                        updateCoinsDisplay();
+                        point.visible = false; 
+                    } 
+                });
+                
+                // Enemy Collision
+                if (enemyCar) { 
+                    enemyBox.setFromObject(enemyCar); 
+                    if (playerBox.intersectsBox(enemyBox)) { 
+                        if (activeShield) {
+                            // Shield protects from collision
+                            activeShield = false;
+                            shieldIndicator.style.display = 'none';
+                            enemyCar.position.z = roadLength / 2 + Math.random() * 50;
+                        } else {
+                            console.log("Collision with enemy!");
+                            isGameOver = true;
+                            gameOverElement.style.display = 'block';
+                            continueAdBtn.style.display = 'block';
+                            
+                            // Show interstitial ad when game over
+                            loadInAppInterstitial();
+                        }
+                    } 
+                }
+            }
+
+            // --- Render ---
+            renderer.render(scene, camera);
+        }
+
+        // === MONETAG AD INTEGRATION ===
+
+        function watchAdToContinue() {
+            console.log("Continue ad button clicked");
+            
+            if (!adInitialized) {
+                showAdStatus("🔄 Ads loading... Please wait", "info");
+                return;
+            }
+
+            if (monetagLoaded) {
+                showAdStatus("📺 Loading Ad...", "info");
+                
+                try {
+                    // Use Rewarded Interstitial for continue option
+                    monetag.showAd('rewarded-interstitial', {
+                        onReward: function() {
+                            console.log("🎉 Ad rewarded - continuing game");
+                            showAdStatus("✅ Reward Received! Game Continues!", "success");
+                            continueGame();
+                        },
+                        onClose: function() {
+                            console.log("Ad closed");
+                            showAdStatus("Ad closed", "info");
+                        },
+                        onError: function(error) {
+                            console.error("Ad error:", error);
+                            showAdStatus("❌ Ad failed. Using demo mode.", "error");
+                            continueGame();
+                        }
+                    });
+                } catch (error) {
+                    console.error("Error showing ad:", error);
+                    showAdStatus("❌ Ad error. Using demo mode.", "error");
+                    continueGame();
+                }
+            } else {
+                console.log("Monetag not loaded, using demo mode");
+                showAdStatus("🔄 Using Demo Mode", "info");
+                continueGame();
+            }
+        }
+
+        function watchAdForDoubleCoins() {
+            console.log("Double coins ad button clicked");
+            
+            if (!adInitialized) {
+                showAdStatus("🔄 Ads loading... Please wait", "info");
+                return;
+            }
+
+            if (monetagLoaded) {
+                showAdStatus("📺 Loading Ad...", "info");
+                
+                try {
+                    // Use Rewarded Popup for double coins
+                    monetag.showAd('rewarded-popup', {
