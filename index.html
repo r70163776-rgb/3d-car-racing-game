@@ -3,255 +3,328 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Car Racing - Earn Money</title>
+    <title>3D Car Racing - Real Monetag Ads</title>
     
     <!-- Monetag SDK -->
     <script src='//libtl.com/sdk.js' data-zone='10183375' data-sdk='show_10183375'></script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background-color: #a0d7e6;
+            font-family: sans-serif;
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+        }
+        #loading-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: white;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow-x: hidden;
+            font-size: 2em;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        #loading-screen.hidden {
+             opacity: 0;
+             pointer-events: none;
         }
         
-        .game-container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .game-title {
+        /* --- UI Elements --- */
+        #ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             color: white;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-shadow: 1px 1px 3px black;
+            z-index: 50;
+            font-size: 1.5em;
         }
-        
-        .game-subtitle {
+        #score {
+            margin-bottom: 5px;
+        }
+        #coins {
+            margin-bottom: 5px;
             color: #FFD700;
-            font-size: 1.2em;
-            margin-bottom: 30px;
         }
         
-        .play-button {
-            background: linear-gradient(45deg, #FF6B6B, #FF8E53);
-            border: none;
-            border-radius: 50px;
-            padding: 15px 40px;
-            color: white;
-            font-size: 1.3em;
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4444;
+            font-size: 4em;
             font-weight: bold;
+            text-align: center;
+            text-shadow: 2px 2px 5px black;
+            display: none;
+            z-index: 101;
+            pointer-events: none;
+        }
+
+        /* --- Mobile Control Buttons --- */
+        .control-button {
+            position: absolute;
+            bottom: 20px;
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            z-index: 60;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            color: rgba(0, 0, 0, 0.7);
             cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
-            margin: 10px;
+            user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            -moz-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .control-button:active {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        #left-button {
+            left: 20px;
+        }
+        #right-button {
+            right: 20px;
         }
         
-        .play-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(255, 107, 107, 0.4);
-        }
-        
+        /* --- Ad Buttons --- */
         .ad-button {
+            position: absolute;
             background: linear-gradient(45deg, #FFD700, #FFA500);
             border: none;
-            border-radius: 25px;
-            padding: 12px 25px;
+            border-radius: 20px;
+            padding: 12px 20px;
             color: #000;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
-            margin: 5px;
+            z-index: 70;
             font-size: 0.9em;
+            box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);
+            transition: all 0.3s;
+        }
+        .ad-button:active {
+            transform: scale(0.95);
         }
         
-        .features {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 25px 0;
+        #continue-ad-btn {
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
         }
         
-        .feature {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 15px;
-            color: white;
+        #double-coins-ad-btn {
+            top: 80px;
+            right: 10px;
         }
         
-        .feature-icon {
-            font-size: 2em;
-            margin-bottom: 10px;
+        #bonus-shield-ad-btn {
+            top: 120px;
+            right: 10px;
         }
         
-        .instructions {
-            background: rgba(0, 0, 0, 0.3);
+        /* --- Power-up Indicators --- */
+        .powerup-indicator {
+            position: absolute;
+            top: 80px;
+            right: 150px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #00ff00;
+            background: rgba(0, 255, 0, 0.2);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            z-index: 50;
+        }
+        
+        #shield-indicator {
+            border-color: #00ffff;
+            background: rgba(0, 255, 255, 0.2);
+        }
+        
+        /* --- Shop Menu --- */
+        #shop-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
             padding: 20px;
             border-radius: 15px;
-            margin: 20px 0;
             color: white;
-            text-align: left;
-        }
-        
-        .instructions h3 {
-            color: #FFD700;
-            margin-bottom: 10px;
-        }
-        
-        .instructions ul {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .instructions li {
-            margin: 8px 0;
-            padding-left: 20px;
-            position: relative;
-        }
-        
-        .instructions li:before {
-            content: "🎯";
-            position: absolute;
-            left: 0;
-        }
-        
-        .game-stats {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            color: white;
-        }
-        
-        .stat {
+            display: none;
+            z-index: 102;
             text-align: center;
+            min-width: 300px;
         }
         
-        .stat-value {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #FFD700;
-        }
-        
-        .ad-info {
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid #FFD700;
-            border-radius: 10px;
+        .shop-item {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
             padding: 15px;
-            margin: 15px 0;
-            color: #FFD700;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        
+        .shop-btn {
+            background: linear-gradient(45deg, #4169E1, #6495ED);
+            border: none;
+            border-radius: 10px;
+            padding: 8px 15px;
+            color: white;
+            cursor: pointer;
+        }
+        
+        #open-shop-btn {
+            top: 10px;
+            right: 10px;
+            position: absolute;
+            background: linear-gradient(45deg, #32CD32, #228B22);
+            z-index: 50;
+        }
+
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1 class="game-title">🚗 3D Car Racing</h1>
-        <p class="game-subtitle">Earn Real Money While Playing!</p>
+    <div id="loading-screen">Loading Game Assets...</div>
+    <div id="container"></div>
+
+    <!-- UI Elements -->
+    <div id="ui-container">
+        <div id="score">Score: 0</div>
+        <div id="coins">🪙 Coins: 0</div>
+    </div>
+    <div id="game-over">GAME OVER!</div>
+
+    <!-- Mobile Control Buttons -->
+    <div id="left-button" class="control-button">◀</div>
+    <div id="right-button" class="control-button">▶</div>
+    
+    <!-- Ad Buttons -->
+    <button id="continue-ad-btn" class="ad-button">🎬 Watch Ad to Continue</button>
+    <button id="double-coins-ad-btn" class="ad-button">💰 2x Coins (Ad)</button>
+    <button id="bonus-shield-ad-btn" class="ad-button">🛡️ Free Shield (Ad)</button>
+    <button id="open-shop-btn" class="ad-button">🛍️ Shop</button>
+    
+    <!-- Power-up Indicators -->
+    <div id="shield-indicator" class="powerup-indicator">🛡️</div>
+    
+    <!-- Shop Menu -->
+    <div id="shop-menu">
+        <h3>🚗 Car Shop</h3>
+        <div>Your Coins: <span id="shop-coins">0</span> 🪙</div>
         
-        <div class="game-stats">
-            <div class="stat">
-                <div class="stat-value" id="total-players">1,234</div>
-                <div>Players</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="total-earnings">$2,567</div>
-                <div>Earned</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="active-ads">156</div>
-                <div>Ads Today</div>
-            </div>
+        <div class="shop-item">
+            <div>Permanent 2x Coins</div>
+            <button class="shop-btn" onclick="buyUpgrade('doubleCoins')">500 🪙</button>
         </div>
         
-        <button class="play-button" onclick="startGame()">
-            🎮 Play Now & Earn
-        </button>
-        
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">💰</div>
-                <h3>Earn Money</h3>
-                <p>Watch ads & earn real cash</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🚀</div>
-                <h3>3D Graphics</h3>
-                <p>Amazing 3D car racing</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">📱</div>
-                <h3>Mobile Friendly</h3>
-                <p>Play on any device</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎁</div>
-                <h3>Daily Rewards</h3>
-                <p>Bonus coins every day</p>
-            </div>
+        <div class="shop-item">
+            <div>Speed Boost</div>
+            <button class="shop-btn" onclick="buyUpgrade('speed')">300 🪙</button>
         </div>
         
-        <div class="instructions">
-            <h3>🎯 How to Earn Money:</h3>
-            <ul>
-                <li>Watch ads to get power-ups</li>
-                <li>Earn coins for high scores</li>
-                <li>Get bonus rewards daily</li>
-                <li>Invite friends for extra earnings</li>
-            </ul>
+        <div class="shop-item">
+            <div>Shield Power-up</div>
+            <button class="shop-btn" onclick="buyUpgrade('shield')">200 🪙</button>
         </div>
         
-        <div class="ad-info">
-            <strong>💰 High CPM Rates:</strong>
-            <br>Earn $5-6 for every 1000 ad views!
-        </div>
-        
-        <div>
-            <button class="ad-button" onclick="watchAdForCoins()">
-                🎁 Get 500 Coins (Watch Ad)
-            </button>
-            <button class="ad-button" onclick="watchAdForPowerup()">
-                ⚡ Get Power-up (Watch Ad)
-            </button>
-        </div>
-        
-        <div style="margin-top: 20px; color: white; font-size: 0.9em;">
-            <p>🔒 Secure payments via Monetag</p>
-            <p>📧 Support: your-email@gmail.com</p>
-        </div>
+        <button class="ad-button" style="margin-top: 15px;" onclick="closeShop()">Close</button>
+        <button class="ad-button" style="background:linear-gradient(45deg,#FF6B6B,#FF8E53);margin-top: 10px;" onclick="watchAdForCoins()">🎁 Get 500 Coins (Ad)</button>
     </div>
 
     <script>
-        // === Game Configuration ===
-        let playerStats = {
-            coins: 0,
-            score: 0,
-            level: 1,
-            totalEarnings: 0
-        };
-
         // === Monetag Ad Functions ===
-        function startGame() {
-            console.log("Starting game with Monetag ads...");
-            alert("🚀 Game Starting! Ads will help you earn money while playing.");
+        
+        function watchAdToContinue() {
+            console.log("Showing rewarded interstitial ad for continue...");
             
-            // Show interstitial ad when game starts
+            // Rewarded Interstitial - User watches ad to continue game
+            show_10183375().then(() => {
+                // User watched ad till end - reward them
+                console.log("User watched ad - continuing game");
+                continueGame();
+            }).catch(error => {
+                // User skipped ad or error occurred
+                console.log("Ad skipped or error:", error);
+                continueGame(); // Still continue as fallback
+            });
+        }
+
+        function watchAdForDoubleCoins() {
+            console.log("Showing rewarded popup ad for double coins...");
+            
+            // Rewarded Popup - User watches ad for double coins
+            show_10183375('pop').then(() => {
+                // User watched ad till end - reward them with double coins
+                console.log("User watched ad - activating double coins");
+                activateDoubleCoins();
+            }).catch(error => {
+                // User skipped ad or error occurred
+                console.log("Ad skipped or error:", error);
+                activateDoubleCoins(); // Still activate as fallback
+            });
+        }
+
+        function watchAdForShield() {
+            console.log("Showing rewarded popup ad for shield...");
+            
+            // Rewarded Popup - User watches ad for shield
+            show_10183375('pop').then(() => {
+                // User watched ad till end - reward them with shield
+                console.log("User watched ad - activating shield");
+                activateShieldPower();
+            }).catch(error => {
+                // User skipped ad or error occurred
+                console.log("Ad skipped or error:", error);
+                activateShieldPower(); // Still activate as fallback
+            });
+        }
+
+        function watchAdForCoins() {
+            console.log("Showing rewarded interstitial ad for coins...");
+            
+            // Rewarded Interstitial - User watches ad for coins
+            show_10183375().then(() => {
+                // User watched ad till end - reward them with coins
+                console.log("User watched ad - adding 500 coins");
+                coins += 500;
+                updateCoinsDisplay();
+            }).catch(error => {
+                // User skipped ad or error occurred
+                console.log("Ad skipped or error:", error);
+                coins += 500; // Still add coins as fallback
+                updateCoinsDisplay();
+            });
+        }
+
+        function loadInAppInterstitial() {
+            console.log("Loading in-app interstitial ad...");
+            
+            // In-App Interstitial - Shows automatically
             show_10183375({
                 type: 'inApp',
                 inAppSettings: {
@@ -262,97 +335,162 @@
                     everyPage: false
                 }
             });
-            
-            // Simulate game starting
-            simulateGameplay();
         }
 
-        function watchAdForCoins() {
-            console.log("Showing rewarded ad for coins...");
-            
-            show_10183375().then(() => {
-                // User watched ad - reward with coins
-                playerStats.coins += 500;
-                playerStats.totalEarnings += 5; // $5 CPM equivalent
-                updateStats();
-                alert("🎉 You earned 500 coins! +$5 to your earnings");
-            }).catch(error => {
-                console.log("Ad skipped:", error);
-                alert("Ad skipped - here are 100 bonus coins anyway!");
-                playerStats.coins += 100;
-                updateStats();
-            });
-        }
+        // === Game Variables ===
+        let coins = 0;
+        let score = 0;
+        let isGameOver = false;
+        let activeShield = false;
+        let doubleCoinsActive = false;
+        let playerUpgrades = {
+            doubleCoins: false,
+            speed: 1,
+            shield: false
+        };
 
-        function watchAdForPowerup() {
-            console.log("Showing rewarded popup ad for powerup...");
-            
-            show_10183375('pop').then(() => {
-                // User watched ad - reward with powerup
-                playerStats.coins += 300;
-                playerStats.totalEarnings += 3; // $3 CPM equivalent
-                updateStats();
-                alert("⚡ Power-up activated! +300 coins & +$3 earnings");
-            }).catch(error => {
-                console.log("Ad skipped:", error);
-                alert("Power-up activated with 50 bonus coins!");
-                playerStats.coins += 50;
-                updateStats();
-            });
+        // === UI Update Functions ===
+        function updateScoreDisplay() { 
+            document.getElementById('score').textContent = `Score: ${score}`; 
+        }
+        
+        function updateCoinsDisplay() { 
+            document.getElementById('coins').textContent = `🪙 Coins: ${coins}`; 
+            document.getElementById('shop-coins').textContent = coins;
         }
 
         // === Game Functions ===
-        function simulateGameplay() {
-            // Simulate player earning coins and score
-            setInterval(() => {
-                playerStats.coins += Math.floor(Math.random() * 10) + 5;
-                playerStats.score += Math.floor(Math.random() * 50) + 10;
+        function continueGame() {
+            isGameOver = false;
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('continue-ad-btn').style.display = 'none';
+            console.log("Game continued after ad watch");
+        }
+
+        function activateDoubleCoins() {
+            doubleCoinsActive = true;
+            console.log("Double coins activated for 30 seconds");
+            setTimeout(() => {
+                doubleCoinsActive = false;
+                console.log("Double coins deactivated");
+            }, 30000);
+        }
+
+        function activateShieldPower() {
+            activeShield = true;
+            document.getElementById('shield-indicator').style.display = 'flex';
+            console.log("Shield activated for 15 seconds");
+            setTimeout(() => {
+                activeShield = false;
+                document.getElementById('shield-indicator').style.display = 'none';
+                console.log("Shield deactivated");
+            }, 15000);
+        }
+
+        function toggleShop() {
+            const shopMenu = document.getElementById('shop-menu');
+            if (shopMenu.style.display === 'block') {
+                closeShop();
+            } else {
+                shopMenu.style.display = 'block';
+            }
+        }
+
+        function closeShop() {
+            document.getElementById('shop-menu').style.display = 'none';
+        }
+
+        function buyUpgrade(type) {
+            const costs = {
+                doubleCoins: 500,
+                speed: 300,
+                shield: 200
+            };
+
+            if (coins >= costs[type]) {
+                coins -= costs[type];
                 
-                // Level up every 500 points
-                if (playerStats.score >= playerStats.level * 500) {
-                    playerStats.level++;
-                    alert(`🎊 Level Up! Now at level ${playerStats.level}`);
+                switch(type) {
+                    case 'doubleCoins':
+                        playerUpgrades.doubleCoins = true;
+                        console.log("Permanent 2x coins purchased");
+                        break;
+                    case 'speed':
+                        playerUpgrades.speed = 1.5;
+                        console.log("Speed boost purchased");
+                        break;
+                    case 'shield':
+                        activateShieldPower();
+                        break;
                 }
                 
-                updateStats();
-            }, 2000);
+                updateCoinsDisplay();
+            } else {
+                console.log("Not enough coins for upgrade");
+            }
+        }
+
+        // === Game Initialization ===
+        function initGame() {
+            console.log("Initializing game...");
+            updateScoreDisplay();
+            updateCoinsDisplay();
             
-            // Show interstitial ads periodically
+            // Load initial interstitial ad when game starts
+            setTimeout(() => {
+                loadInAppInterstitial();
+            }, 3000);
+        }
+
+        // Start the game when page loads
+        window.addEventListener('load', function() {
+            console.log("Page loaded - starting game");
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('hidden');
+                initGame();
+            }, 2000);
+        });
+
+        // Simulate game events for testing
+        function simulateGamePlay() {
+            // Simulate score increase
             setInterval(() => {
-                show_10183375({
-                    type: 'inApp',
-                    inAppSettings: {
-                        frequency: 1,
-                        capping: 0.1,
-                        interval: 60,
-                        timeout: 3,
-                        everyPage: false
+                if (!isGameOver) {
+                    score += 10;
+                    updateScoreDisplay();
+                }
+            }, 1000);
+
+            // Simulate coin collection
+            setInterval(() => {
+                if (!isGameOver) {
+                    let coinValue = 5;
+                    if (doubleCoinsActive || playerUpgrades.doubleCoins) {
+                        coinValue *= 2;
                     }
-                });
-            }, 60000); // Every 60 seconds
+                    coins += coinValue;
+                    updateCoinsDisplay();
+                }
+            }, 2000);
+
+            // Simulate game over after 30 seconds for testing
+            setTimeout(() => {
+                if (!isGameOver) {
+                    isGameOver = true;
+                    document.getElementById('game-over').style.display = 'block';
+                    document.getElementById('continue-ad-btn').style.display = 'block';
+                    console.log("Game over - show continue ad button");
+                }
+            }, 30000);
         }
 
-        function updateStats() {
-            document.getElementById('total-players').textContent = 
-                (1234 + Math.floor(playerStats.score / 10)).toLocaleString();
-            document.getElementById('total-earnings').textContent = 
-                '$' + (2567 + playerStats.totalEarnings).toLocaleString();
-            document.getElementById('active-ads').textContent = 
-                (156 + Math.floor(playerStats.coins / 100));
-        }
-
-        // === Initialize Game ===
-        console.log("3D Car Racing Game Initialized with Monetag");
-        console.log("Zone ID: 10183375 - Ready to earn money!");
-        
-        // Update stats every second
-        setInterval(updateStats, 1000);
-        
-        // Add some random stat fluctuations for realism
-        setInterval(() => {
-            updateStats();
-        }, 5000);
+        // Start simulated gameplay
+        setTimeout(simulateGamePlay, 3000);
 
     </script>
+
+    <!-- Three.js Game Code Would Go Here -->
+    <!-- For demo purposes, we're focusing on ad integration -->
+
 </body>
 </html>
