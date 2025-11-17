@@ -162,64 +162,6 @@
             border-color: #00ffff;
             background: rgba(0, 255, 255, 0.2);
         }
-        
-        /* --- Shop Menu --- */
-        #shop-menu {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 15px;
-            color: white;
-            display: none;
-            z-index: 102;
-            text-align: center;
-            min-width: 300px;
-        }
-        
-        .shop-item {
-            background: rgba(255, 255, 255, 0.1);
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .shop-btn {
-            background: linear-gradient(45deg, #4169E1, #6495ED);
-            border: none;
-            border-radius: 10px;
-            padding: 8px 15px;
-            color: white;
-            cursor: pointer;
-        }
-        
-        #open-shop-btn {
-            top: 10px;
-            right: 10px;
-            position: absolute;
-            background: linear-gradient(45deg, #32CD32, #228B22);
-            z-index: 50;
-        }
-
-        /* Ad Status Messages */
-        #ad-status {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-            z-index: 103;
-            text-align: center;
-        }
 
     </style>
 </head>
@@ -242,37 +184,9 @@
     <button id="continue-ad-btn" class="ad-button">🎬 Watch Ad to Continue</button>
     <button id="double-coins-ad-btn" class="ad-button">💰 2x Coins (Ad)</button>
     <button id="bonus-shield-ad-btn" class="ad-button">🛡️ Free Shield (Ad)</button>
-    <button id="open-shop-btn" class="ad-button">🛍️ Shop</button>
     
     <!-- Power-up Indicators -->
     <div id="shield-indicator" class="powerup-indicator">🛡️</div>
-    
-    <!-- Shop Menu -->
-    <div id="shop-menu">
-        <h3>🚗 Car Shop</h3>
-        <div>Your Coins: <span id="shop-coins">0</span> 🪙</div>
-        
-        <div class="shop-item">
-            <div>Permanent 2x Coins</div>
-            <button class="shop-btn" onclick="buyUpgrade('doubleCoins')">500 🪙</button>
-        </div>
-        
-        <div class="shop-item">
-            <div>Speed Boost</div>
-            <button class="shop-btn" onclick="buyUpgrade('speed')">300 🪙</button>
-        </div>
-        
-        <div class="shop-item">
-            <div>Shield Power-up</div>
-            <button class="shop-btn" onclick="buyUpgrade('shield')">200 🪙</button>
-        </div>
-        
-        <button class="ad-button" style="margin-top: 15px;" onclick="closeShop()">Close</button>
-        <button class="ad-button" style="background:linear-gradient(45deg,#FF6B6B,#FF8E53);margin-top: 10px;" onclick="watchAdForCoins()">🎁 Get 500 Coins (Ad)</button>
-    </div>
-
-    <!-- Ad Status Message -->
-    <div id="ad-status"></div>
 
     <!-- Import Maps -->
     <script type="importmap">
@@ -304,7 +218,7 @@
         const kerbHeight = 0.2;
         const kerbWidth = 0.3;
 
-        // --- Enhanced Game State ---
+        // --- Game State ---
         let moveLeft = false;
         let moveRight = false;
         const carMoveSpeed = 0.15;
@@ -319,7 +233,6 @@
             speed: 1,
             shield: false
         };
-        // --- End Enhanced Game State ---
 
         // --- Points ---
         const points = [];
@@ -327,7 +240,6 @@
         const pointValue = 10;
         let pointGeometry, pointMaterial;
         const pointRadius = 0.3;
-        // --- End Points ---
 
         // --- UI Elements References ---
         const loadingScreen = document.getElementById('loading-screen');
@@ -338,21 +250,11 @@
         const doubleCoinsAdBtn = document.getElementById('double-coins-ad-btn');
         const bonusShieldAdBtn = document.getElementById('bonus-shield-ad-btn');
         const shieldIndicator = document.getElementById('shield-indicator');
-        const shopMenu = document.getElementById('shop-menu');
-        const shopCoinsElement = document.getElementById('shop-coins');
-        const adStatus = document.getElementById('ad-status');
-        // --- End UI Refs ---
 
         // --- Bounding Boxes ---
         let playerBox = new THREE.Box3();
         let enemyBox = new THREE.Box3();
         let pointBox = new THREE.Box3();
-        // --- End Bounding Boxes ---
-
-        // --- Monetag State ---
-        let monetagLoaded = false;
-        let adInitialized = false;
-        // --- End Monetag State ---
 
         const loadingManager = new THREE.LoadingManager();
 
@@ -362,7 +264,8 @@
             loadingScreen.classList.add('hidden'); 
             setTimeout(() => { 
                 if (loadingScreen) loadingScreen.style.display = 'none'; 
-                initializeMonetag();
+                // Show initial interstitial ad
+                loadInAppInterstitial();
             }, 600); 
         };
         
@@ -378,61 +281,6 @@
             const progress = Math.round((itemsLoaded / itemsTotal) * 100); 
             loadingScreen.textContent = `Loading ${progress}%...`; 
         };
-
-        // Initialize Monetag SDK
-        function initializeMonetag() {
-            // Check if monetag is already loaded
-            if (typeof monetag !== 'undefined') {
-                monetagLoaded = true;
-                adInitialized = true;
-                console.log("Monetag SDK loaded successfully!");
-                showAdStatus("🎯 Monetag Ads Ready!", "success");
-                
-                // Show initial interstitial after SDK loads
-                setTimeout(() => {
-                    loadInAppInterstitial();
-                }, 2000);
-                return;
-            }
-
-            // Wait for Monetag to load
-            const checkMonetag = setInterval(() => {
-                if (typeof monetag !== 'undefined') {
-                    clearInterval(checkMonetag);
-                    monetagLoaded = true;
-                    adInitialized = true;
-                    console.log("Monetag SDK loaded successfully!");
-                    showAdStatus("🎯 Monetag Ads Ready!", "success");
-                    
-                    setTimeout(() => {
-                        loadInAppInterstitial();
-                    }, 2000);
-                }
-            }, 1000);
-
-            // Timeout after 10 seconds
-            setTimeout(() => {
-                if (!monetagLoaded) {
-                    clearInterval(checkMonetag);
-                    console.log("Monetag SDK timeout - using demo mode");
-                    showAdStatus("⚠️ Using Demo Mode", "info");
-                    monetagLoaded = false;
-                    adInitialized = true;
-                }
-            }, 10000);
-        }
-
-        function showAdStatus(message, type = "info") {
-            adStatus.textContent = message;
-            adStatus.style.display = 'block';
-            adStatus.style.background = type === "success" ? "rgba(0, 255, 0, 0.8)" : 
-                                      type === "error" ? "rgba(255, 0, 0, 0.8)" : 
-                                      "rgba(255, 215, 0, 0.8)";
-            
-            setTimeout(() => {
-                adStatus.style.display = 'none';
-            }, 3000);
-        }
 
         init();
         setupControls();
@@ -646,7 +494,6 @@
                 if (isGameOver) return;
                 if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') { moveLeft = true; }
                 else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') { moveRight = true; }
-                else if (event.key === 'Escape') { toggleShop(); }
             });
             
             window.addEventListener('keyup', (event) => {
@@ -674,7 +521,6 @@
             continueAdBtn.addEventListener('click', watchAdToContinue);
             doubleCoinsAdBtn.addEventListener('click', watchAdForDoubleCoins);
             bonusShieldAdBtn.addEventListener('click', watchAdForShield);
-            document.getElementById('open-shop-btn').addEventListener('click', toggleShop);
         }
 
         function resetPointPosition(point, initial = false) {
@@ -687,10 +533,7 @@
         }
 
         function updateScoreDisplay() { scoreElement.textContent = `Score: ${score}`; }
-        function updateCoinsDisplay() { 
-            coinsElement.textContent = `🪙 Coins: ${coins}`; 
-            shopCoinsElement.textContent = coins;
-        }
+        function updateCoinsDisplay() { coinsElement.textContent = `🪙 Coins: ${coins}`; }
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -723,10 +566,9 @@
                 }
             }
 
-            // --- FIXED: Handle Player Car Controls ---
+            // --- Handle Player Car Controls ---
             if (carModel && carBaseY > 0) {
-                // Fixed bounds calculation
-                const maxBounds = (roadWidth / 2) - 1.5; // Simple fixed bounds
+                const maxBounds = (roadWidth / 2) - 1.5;
 
                 if (moveLeft) { 
                     carModel.position.x -= carMoveSpeed; 
@@ -735,13 +577,10 @@
                     carModel.position.x += carMoveSpeed; 
                 }
                 
-                // Apply bounds
                 carModel.position.x = Math.max(-maxBounds, Math.min(maxBounds, carModel.position.x));
 
-                // Update Player Bounding Box
                 playerBox.setFromObject(carModel);
 
-                // Update Camera
                 const targetCameraX = carModel.position.x * 0.5;
                 camera.position.x += (targetCameraX - camera.position.x) * 0.1;
                 camera.lookAt(carModel.position.x, carBaseY + 1, carModel.position.z + 5);
@@ -749,7 +588,6 @@
 
             // --- Collision Detection ---
             if (carModel) {
-                // Point Collision
                 points.forEach(point => { 
                     if (!point.visible) return; 
                     pointBox.setFromObject(point); 
@@ -766,12 +604,10 @@
                     } 
                 });
                 
-                // Enemy Collision
                 if (enemyCar) { 
                     enemyBox.setFromObject(enemyCar); 
                     if (playerBox.intersectsBox(enemyBox)) { 
                         if (activeShield) {
-                            // Shield protects from collision
                             activeShield = false;
                             shieldIndicator.style.display = 'none';
                             enemyCar.position.z = roadLength / 2 + Math.random() * 50;
@@ -781,71 +617,96 @@
                             gameOverElement.style.display = 'block';
                             continueAdBtn.style.display = 'block';
                             
-                            // Show interstitial ad when game over
                             loadInAppInterstitial();
                         }
                     } 
                 }
             }
 
-            // --- Render ---
             renderer.render(scene, camera);
         }
 
-        // === MONETAG AD INTEGRATION ===
+        // === MONETAG AD FUNCTIONS ===
 
         function watchAdToContinue() {
-            console.log("Continue ad button clicked");
+            console.log("Showing rewarded interstitial ad for continue...");
             
-            if (!adInitialized) {
-                showAdStatus("🔄 Ads loading... Please wait", "info");
-                return;
-            }
-
-            if (monetagLoaded) {
-                showAdStatus("📺 Loading Ad...", "info");
-                
-                try {
-                    // Use Rewarded Interstitial for continue option
-                    monetag.showAd('rewarded-interstitial', {
-                        onReward: function() {
-                            console.log("🎉 Ad rewarded - continuing game");
-                            showAdStatus("✅ Reward Received! Game Continues!", "success");
-                            continueGame();
-                        },
-                        onClose: function() {
-                            console.log("Ad closed");
-                            showAdStatus("Ad closed", "info");
-                        },
-                        onError: function(error) {
-                            console.error("Ad error:", error);
-                            showAdStatus("❌ Ad failed. Using demo mode.", "error");
-                            continueGame();
-                        }
-                    });
-                } catch (error) {
-                    console.error("Error showing ad:", error);
-                    showAdStatus("❌ Ad error. Using demo mode.", "error");
-                    continueGame();
-                }
-            } else {
-                console.log("Monetag not loaded, using demo mode");
-                showAdStatus("🔄 Using Demo Mode", "info");
+            show_10183375().then(() => {
+                console.log("User watched ad - continuing game");
                 continueGame();
-            }
+            }).catch(error => {
+                console.log("Ad skipped or error:", error);
+                continueGame();
+            });
         }
 
         function watchAdForDoubleCoins() {
-            console.log("Double coins ad button clicked");
+            console.log("Showing rewarded popup ad for double coins...");
             
-            if (!adInitialized) {
-                showAdStatus("🔄 Ads loading... Please wait", "info");
-                return;
-            }
+            show_10183375('pop').then(() => {
+                console.log("User watched ad - activating double coins");
+                activateDoubleCoins();
+            }).catch(error => {
+                console.log("Ad skipped or error:", error);
+                activateDoubleCoins();
+            });
+        }
 
-            if (monetagLoaded) {
-                showAdStatus("📺 Loading Ad...", "info");
-                
-                try {
-                    // Use Rewarded Popup for double coins
-                    monetag.showAd('rewarded-popup', {
+        function watchAdForShield() {
+            console.log("Showing rewarded popup ad for shield...");
+            
+            show_10183375('pop').then(() => {
+                console.log("User watched ad - activating shield");
+                activateShieldPower();
+            }).catch(error => {
+                console.log("Ad skipped or error:", error);
+                activateShieldPower();
+            });
+        }
+
+        function loadInAppInterstitial() {
+            console.log("Loading in-app interstitial ad...");
+            
+            show_10183375({
+                type: 'inApp',
+                inAppSettings: {
+                    frequency: 2,
+                    capping: 0.1,
+                    interval: 30,
+                    timeout: 5,
+                    everyPage: false
+                }
+            });
+        }
+
+        // === GAME FUNCTIONS ===
+
+        function continueGame() {
+            isGameOver = false;
+            gameOverElement.style.display = 'none';
+            continueAdBtn.style.display = 'none';
+            
+            if (enemyCar) {
+                enemyCar.position.z = roadLength / 2 + Math.random() * 50;
+            }
+        }
+
+        function activateDoubleCoins() {
+            doubleCoinsActive = true;
+            setTimeout(() => {
+                doubleCoinsActive = false;
+            }, 30000);
+        }
+
+        function activateShieldPower() {
+            activeShield = true;
+            shieldIndicator.style.display = 'flex';
+            setTimeout(() => {
+                activeShield = false;
+                shieldIndicator.style.display = 'none';
+            }, 15000);
+        }
+
+    </script>
+</body>
+</html>
