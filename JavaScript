@@ -1,0 +1,23 @@
+// Rewarded Interstitial
+show_10183375().then(() => {
+    // User watched ad - give reward
+    continueGame();
+});
+
+// Rewarded Popup  
+show_10183375('pop').then(() => {
+    // User watched ad - give reward
+    activateDoubleCoins();
+});
+
+// In-App Interstitial
+show_10183375({
+    type: 'inApp',
+    inAppSettings: {
+        frequency: 2,
+        capping: 0.1, 
+        interval: 30,
+        timeout: 5,
+        everyPage: false
+    }
+});
